@@ -41,7 +41,7 @@ class ClsModel(aardvark.Model):
         reg = tf.reduce_sum(tf.losses.get_regularization_losses(), name='re')
         # loss
         tf.losses.add_loss(xe)
-        self.metrics.extend([xe, acc, reg, tf.losses.get_total_loss(name='lo')])
+        self.metrics.extend([xe, acc])
         pass
 
     def extra_stream_config (self, is_training):
