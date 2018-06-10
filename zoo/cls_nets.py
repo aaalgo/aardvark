@@ -62,3 +62,4 @@ def vgg16 (inputs, is_training, num_classes):
     print(vgg.__file__)
     logits, _ = vgg.vgg_d(inputs, num_classes)
     return tf.identity(logits, name='logits')
+
