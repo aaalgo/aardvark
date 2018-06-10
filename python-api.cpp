@@ -187,6 +187,46 @@ namespace {
             return masks;
         }
     };
+
+    list predict_basic_keypoints (np::ndarray prob, np::ndarray offsets, int stride, float th) {
+        // 
+        CHECK(prob.get_nd() == 3);
+        CHECK(offsets.get_nd() == 3);
+        int H = prob.shape(0);
+        int W = prob.shape(1);
+        int C = prob.shape(2);
+        CHECK(offsets.shape(0) == H);
+        CHECK(offsets.shape(1) == W);
+        CHECK(offsets.shape(2) == C * 2);
+
+        // for each class
+        list kp;
+        for (int c = 0; c < C; ++c) {
+            cv::Mat mass(H * stride, W * stride, CV_32F, cv::Scalar(0));
+            for (int y = 0; y < H; ++y) {
+                float const *pp = (float const *)(prob.get_data() + prob.strides(0) * y) + c;
+                float const *po = (float const *)(offsets.get_data() + offsets.strides(0) * y) + c * 2;
+                for (int x = 0; x < W; ++x, pp += C, po += C * 2) {
+                    int tx = int(roundf(x * stride + po[0]));
+                    int ty = int(roundf(y * stride + po[1]));
+                    if (tx < 0) continue;
+                    if (tx >= mass.cols) continue;
+                    if (ty < 0) continue;
+                    if (ty >= mass.rows) continue;
+                    if (pp[0] >= th) {
+                        mass.ptr<float>(ty)[tx] += pp[0];
+                    }
+                }
+            }
+            cv::boxFilter(mass, mass, -1, cv::Size(3,3));
+            // find argmax
+            double min, max;
+            cv::Point min_loc, max_loc;
+            cv::minMaxLoc(mass, &min, &max, &min_loc, &max_loc);
+            kp.append(make_tuple(max_loc.x, max_loc.y, c, float(max)));
+        }
+        return kp;
+    }
 }
 
 BOOST_PYTHON_MODULE(cpp)
@@ -198,5 +238,6 @@ BOOST_PYTHON_MODULE(cpp)
     class_<MaskExtractor>("MaskExtractor", init<int, int>())
         .def("apply", &MaskExtractor::apply)
     ;
+    def("predict_basic_keypoints", ::predict);
 }
 
