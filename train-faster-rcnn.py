@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
+import os
 import sys
-sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'models/research/slim'))
 # C++ code, python3 setup.py build
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), 'build/lib.linux-x86_64-3.5'))
+sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'zoo/slim'))
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 from nets import nets_factory, resnet_utils 
@@ -11,6 +12,8 @@ import cpp
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
+
+flags.DEFINE_integer('classes', 2, '')
 
 flags.DEFINE_integer('size', None, '') 
 flags.DEFINE_integer('backbone_stride', 16, '')
@@ -25,7 +28,7 @@ flags.DEFINE_float('match_th', 0.5, '')
 flags.DEFINE_integer('max_masks', 128, '')
 
 flags.DEFINE_string('backbone', 'resnet_v2_50', 'architecture')
-#flags.DEFINE_string('finetune', None, '')
+flags.DEFINE_string('finetune', None, '')
 
 # optimizer settings
 flags.DEFINE_float('pl_weight1', 1.0/50, '')
@@ -329,12 +332,6 @@ class FasterRCNN (aardvark.Model):
             self.losses.append(pl)
             self.metrics.append(pl)
             '''
-
-        if True:    # setup losses
-            #reg = tf.identity(tf.reduce_sum(tf.losses.get_regularization_losses()) * FLAGS.re_weight, name='re')
-            #self.losses.append(reg)
-            #self.metrics.append(reg)
-            #self.metrics.append(self.total_loss)
         pass
 
     def extra_stream_config (self, is_training):
@@ -352,7 +349,7 @@ class FasterRCNN (aardvark.Model):
 
 def patch_arg_scopes ():
     def resnet_arg_scope (weight_decay=0.0001):
-        print_red("Patching resnet_v2 arg_scope when training from scratch")
+        aardvark.print_red("Patching resnet_v2 arg_scope when training from scratch")
         return resnet_utils.resnet_arg_scope(weight_decay=weight_decay,
                     batch_norm_decay=0.9,
                     batch_norm_epsilon=5e-4,
@@ -398,6 +395,10 @@ def setup_finetune (ckpt, exclusions):
             ckpt, variables_to_restore,
             ignore_missing_vars=False), variables_to_train
 
+def main (_):
+    model = FasterRCNN()
+    aardvark.train(model)
+    pass
 
 if __name__ == '__main__':
     try:
