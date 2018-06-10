@@ -3,7 +3,7 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import picpac
 import aardvark
-import cls_nets as nets
+from zoo import cls_nets as nets
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
