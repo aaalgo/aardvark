@@ -19,8 +19,8 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 # PicPac-related parameters
-flags.DEFINE_string('db', 'train.db', 'training db')
-flags.DEFINE_string('val_db', 'val.db', 'validation db')
+flags.DEFINE_string('db', None, 'training db')
+flags.DEFINE_string('val_db', None, 'validation db')
 
 flags.DEFINE_string('mixin', None, 'db to be mixed into training')
 flags.DEFINE_integer('channels', 3, 'image channels')
@@ -49,7 +49,7 @@ flags.DEFINE_float('weight_decay', 0.00004, '')
 flags.DEFINE_boolean('adam', True, '')
 
 
-def load_augments (self, is_training):
+def load_augments (is_training):
     augments = []
     if is_training:
         if FLAGS.augments:
@@ -61,7 +61,7 @@ def load_augments (self, is_training):
         pass
     return augments
 
-def create_picpac_stream (self, path, is_training, extra_config):
+def create_picpac_stream (path, is_training, extra_config):
 
     assert os.path.exists(path)
     print("CACHE:", FLAGS.cache)
@@ -150,6 +150,8 @@ def train (model):
 
     metrics = model.metrics
     reg_loss = tf.add_n(tf.losses.get_regularization_losses(), name='l2')
+    for loss in tf.losses.get_losses():
+        print("LOSS:", loss.name)
     total_loss = tf.losses.get_total_loss(name='L')
     metrics.extend([reg_loss, total_loss])
 

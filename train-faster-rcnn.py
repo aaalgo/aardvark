@@ -4,6 +4,7 @@ import sys
 # C++ code, python3 setup.py build
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), 'build/lib.linux-x86_64-3.5'))
 sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'zoo/slim'))
+import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 from nets import nets_factory, resnet_utils 
@@ -140,8 +141,8 @@ def params_loss (params, gt_params):
     dxy, wh = tf.split(params, [2,2], 1)
     dxy_gt, wh_gt = tf.split(gt_params, [2,2], 1)
     wh_gt = tf.log(wh_gt + 1)
-    l1 = tf.losses.huber_loss(dxy, dxy_gt, reduction=tf.losses.Reduction.NONE)
-    l2 = tf.losses.huber_loss(wh, wh_gt, reduction=tf.losses.Reduction.NONE)
+    l1 = tf.losses.huber_loss(dxy, dxy_gt, reduction=tf.losses.Reduction.NONE, loss_collection=None)
+    l2 = tf.losses.huber_loss(wh, wh_gt, reduction=tf.losses.Reduction.NONE, loss_collection=None)
     return tf.reduce_sum(l1+l2, axis=1)
 
 class FasterRCNN (aardvark.Model):
