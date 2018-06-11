@@ -252,6 +252,35 @@ class SegmentationModel(Model):
                 self.labels: labels}
     pass
 
+def setup_finetune (ckpt, is_trainable):
+    print("Finetuning %s" % ckpt)
+    # TODO(sguada) variables.filter_variables()
+    variables_to_restore = []
+    model_vars = tf.get_collection(tf.GraphKeys.MODEL_VARIABLES)
+    for var in model_vars:
+        if not is_trainable(var.op.name):
+            variables_to_restore.append(var)
+
+    if tf.gfile.IsDirectory(ckpt):
+        ckpt = tf.train.latest_checkpoint(ckpt)
+
+    variables_to_train = []
+    trainable_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+    for var in trainable_vars:
+        if is_trainable(var.op.name):
+            variables_to_train.append(var)
+
+    print("Restoring %d out of %d model variables" % (len(variables_to_restore), len(model_vars)))
+    print("Training %d out of %d trainable variables" % (len(variables_to_train), len(trainable_vars)))
+    if len(variables_to_train) < 20:
+        for var in variables_to_train:
+            print("    %s" % var.op.name)
+
+    return tf.contrib.framework.assign_from_checkpoint_fn(
+            ckpt, variables_to_restore,
+            ignore_missing_vars=False), variables_to_train
+
+
 class Metrics:  # display metrics
     def __init__ (self, model):
         self.metric_names = [x.name[:-2] for x in model.metrics]

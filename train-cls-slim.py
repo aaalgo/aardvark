@@ -32,9 +32,12 @@ class Model (aardvark.ClassificationModel):
         network_fn = nets_factory.get_network_fn(FLAGS.net, num_classes=classes, is_training=is_training, weight_decay=FLAGS.weight_decay)
 
         logits, _ = network_fn(images-PIXEL_MEANS, scope=FLAGS.net)
+
+        if FLAGS.finetune:
+            assert FLAGS.colorspace == 'RGB'
+            self.init_session, self.variables_to_train = aardvark.setup_finetune(FLAGS.finetune, lambda x: 'logits' in x)
         return logits
     pass
-
 
 def main (_):
     model = Model()
