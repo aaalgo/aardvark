@@ -31,7 +31,7 @@ class Model (aardvark.ClassificationModel):
         
         network_fn = nets_factory.get_network_fn(FLAGS.net, num_classes=classes, is_training=is_training, weight_decay=FLAGS.weight_decay)
 
-        logits, _ = network_fn(images-PIXEL_MEANS, scope=FLAGS.net)
+        logits, _ = network_fn(images-PIXEL_MEANS[:,:,:,:FLAGS.channels], scope=FLAGS.net)
 
         if FLAGS.finetune:
             assert FLAGS.colorspace == 'RGB'

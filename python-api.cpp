@@ -238,6 +238,6 @@ BOOST_PYTHON_MODULE(cpp)
     class_<MaskExtractor>("MaskExtractor", init<int, int>())
         .def("apply", &MaskExtractor::apply)
     ;
-    def("predict_basic_keypoints", ::predict);
+    def("predict_basic_keypoints", ::predict_basic_keypoints);
 }
 

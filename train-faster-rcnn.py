@@ -199,7 +199,7 @@ class FasterRCNN (aardvark.Model):
             with slim.arg_scope([slim.conv2d, slim.conv2d_transpose, slim.max_pool2d], padding='SAME'), \
                  slim.arg_scope([slim.conv2d, slim.conv2d_transpose], weights_regularizer=slim.l2_regularizer(2.5e-4), normalizer_fn=slim.batch_norm, normalizer_params={'decay': 0.9, 'epsilon': 5e-4, 'scale': False, 'is_training':self.is_training}), \
                  slim.arg_scope([slim.batch_norm], is_training=self.is_training):
-                net, _ = network_fn(self.images-PIXEL_MEANS, global_pool=False, output_stride=FLAGS.backbone_stride)
+                     net, _ = network_fn(self.images-PIXEL_MEANS[:,:,:,:channels], global_pool=False, output_stride=FLAGS.backbone_stride)
                 assert FLAGS.backbone_stride % FLAGS.anchor_stride == 0
                 ss = FLAGS.backbone_stride // FLAGS.anchor_stride
                 self.backbone = slim.conv2d_transpose(net, FLAGS.features, ss*2, ss)

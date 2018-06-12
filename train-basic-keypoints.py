@@ -17,9 +17,9 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('finetune', None, '')
 flags.DEFINE_string('backbone', 'resnet_v2_50', 'architecture')
 flags.DEFINE_integer('backbone_stride', 16, '')
+flags.DEFINE_integer('feature_channels', 64, '')
 flags.DEFINE_float('weight_decay', 0.00004, '')
 flags.DEFINE_boolean('patch_slim', False, '')
-flags.DEFINE_integer('reduction', 1, '')
 
 flags.DEFINE_integer('stride', 4, '')
 flags.DEFINE_integer('radius', 25, '')
@@ -88,23 +88,26 @@ class Model (aardvark.Model):
                 fuck_slim.patch(is_training)
             network_fn = nets_factory.get_network_fn(FLAGS.backbone, num_classes=None,
                         weight_decay=FLAGS.weight_decay, is_training=is_training)
-            backbone, _ = network_fn(images-PIXEL_MEANS, global_pool=False, output_stride=FLAGS.backbone_stride, scope=FLAGS.backbone)
+            backbone, _ = network_fn(images-PIXEL_MEANS[:,:,:,:FLAGS.channels], global_pool=False, output_stride=FLAGS.backbone_stride, scope=FLAGS.backbone)
 
         with tf.variable_scope('head'), \
-             slim.arg_scope([slim.conv2d, slim.conv2d_transpose], weights_regularizer=slim.l2_regularizer(2.5e-4), normalizer_fn=slim.batch_norm, normalizer_params={'decay': 0.9, 'epsilon': 5e-4, 'scale': False, 'is_training':is_training}):
+             slim.arg_scope([slim.conv2d, slim.conv2d_transpose], weights_regularizer=slim.l2_regularizer(2.5e-4), normalizer_fn=slim.batch_norm, normalizer_params={'decay': 0.9, 'epsilon': 5e-4, 'scale': False, 'is_training':is_training}, padding='SAME'):
 
-            net = backbone
             if FLAGS.finetune:
-                net = tf.stop_gradient(net)
-            net = slim_multistep_upscale(net, FLAGS.backbone_stride / FLAGS.stride, FLAGS.reduction)
-            backbone = net
+                backbone = tf.stop_gradient(backbone)
+            #net = slim_multistep_upscale(net, FLAGS.backbone_stride / FLAGS.stride, FLAGS.reduction)
+            #backbone = net
+            stride = FLAGS.backbone_stride // FLAGS.stride
+            #backbone = slim.conv2d_transpose(backbone, FLAGS.feature_channels, st*2, st)
 
-            prob = slim.conv2d(backbone, FLAGS.classes, 3, 1, activation_fn=tf.sigmoid) 
+            #prob = slim.conv2d(backbone, FLAGS.classes, 3, 1, activation_fn=tf.sigmoid) 
+            prob = slim.conv2d_transpose(backbone, FLAGS.classes, stride*2, stride, activation_fn=tf.sigmoid)
+
             #logits2 = tf.reshape(logits, (-1, 2))
             #prob2 = tf.squeeze(tf.slice(tf.nn.softmax(logits2), [0, 1], [-1, 1]), 1)
             #tf.reshape(prob2, tf.shape(mask), name='prob')
             #xe = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits2, labels=mask)
-            dice = tf.identity(dice_loss(tf.cast(mask, tf.float32), prob), name='di')
+            dice = tf.identity(dice_loss(mask, prob), name='di')
 
             ''''
             mask = tf.reshape(mask, (-1, ))
@@ -117,17 +120,19 @@ class Model (aardvark.Model):
             tf.losses.add_loss(dice)
             self.metrics.append(dice)
 
-            offsets = slim.conv2d(backbone, FLAGS.classes * 2, 3, 1, activation_fn=None)
-            tf.identity(offsets, 'offsets')
+            offsets = slim.conv2d_transpose(backbone, FLAGS.classes*2, stride*2, stride, activation_fn=None)
             offsets2 = tf.reshape(offsets, (-1, 2))     # ? * 4
             gt_offsets2 = tf.reshape(gt_offsets, (-1,2))
+            mask2 = tf.reshape(mask, (-1,))
 
-            pl = params_loss(offsets2, gt_offsets2) * tf.reshape(mask, (-1,))
-            pl = tf.reduce_sum(pl) / (tf.reduce_sum(mask) + 1)
+            pl = params_loss(offsets2, gt_offsets2) * mask2
+            pl = tf.reduce_sum(pl) / (tf.reduce_sum(mask2) + 1)
             pl = tf.check_numerics(pl * FLAGS.offset_weight, 'pl', name='p1') # params-loss
 
             tf.losses.add_loss(pl)
             self.metrics.append(pl)
+        tf.identity(prob, name='prob')
+        tf.identity(offsets, 'offsets')
 
         if FLAGS.finetune:
             assert FLAGS.colorspace == 'RGB'

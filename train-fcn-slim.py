@@ -38,7 +38,7 @@ class Model (aardvark.SegmentationModel):
         network_fn = nets_factory.get_network_fn(FLAGS.backbone, num_classes=None,
                         weight_decay=FLAGS.weight_decay, is_training=is_training)
 
-        backbone, _ = network_fn(images-PIXEL_MEANS, global_pool=False, output_stride=FLAGS.backbone_stride, scope=FLAGS.backbone)
+        backbone, _ = network_fn(images-PIXEL_MEANS[:,:,:,:FLAGS.channels], global_pool=False, output_stride=FLAGS.backbone_stride, scope=FLAGS.backbone)
 
         if FLAGS.finetune:
             backbone = tf.stop_gradient(backbone)
