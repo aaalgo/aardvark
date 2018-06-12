@@ -6,6 +6,7 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 from nets import nets_factory, resnet_utils 
 import aardvark
+from tf_utils import *
 from zoo import fuck_slim
 
 flags = tf.app.flags
@@ -28,31 +29,23 @@ class Model (aardvark.SegmentationModel):
     def inference (self, images, classes, is_training):
         assert FLAGS.clip_stride % FLAGS.backbone_stride == 0
         global PIXEL_MEANS
+
         fuck_slim.extend()
         if FLAGS.patch_slim:
             fuck_slim.patch(is_training)
+
         network_fn = nets_factory.get_network_fn(FLAGS.backbone, num_classes=None,
                         weight_decay=FLAGS.weight_decay, is_training=is_training)
 
-        with slim.arg_scope([slim.conv2d, slim.conv2d_transpose, slim.max_pool2d], padding='SAME'), \
-             slim.arg_scope([slim.conv2d, slim.conv2d_transpose], weights_regularizer=slim.l2_regularizer(2.5e-4), normalizer_fn=slim.batch_norm, normalizer_params={'decay': 0.9, 'epsilon': 5e-4, 'scale': False, 'is_training':is_training}), \
-             slim.arg_scope([slim.batch_norm], is_training=is_training):
-        #with slim.arg_scope([slim.conv2d, slim.conv2d_transpose, slim.max_pool2d], padding='SAME'):
-            backbone, _ = network_fn(images-PIXEL_MEANS, global_pool=False, output_stride=FLAGS.backbone_stride, scope=FLAGS.backbone)
+        backbone, _ = network_fn(images-PIXEL_MEANS, global_pool=False, output_stride=FLAGS.backbone_stride, scope=FLAGS.backbone)
 
-            with tf.variable_scope('head'):
-                net = backbone
-                if FLAGS.finetune:
-                    net = tf.stop_gradient(net)
-                ch = net.get_shape()[3]  # upscale
-                stride = FLAGS.backbone_stride
-                ch = ch // FLAGS.reduction
-                while stride > 1:
-                    ch = ch // 2
-                    stride = stride / 2
-                    net = slim.conv2d_transpose(net, ch, 4, 2)
-                pass
-                logits = tf.layers.conv2d(net, classes, 3, 1, activation=None, padding='SAME')
+        with tf.variable_scope('head'), \
+             slim.arg_scope([slim.conv2d, slim.conv2d_transpose], weights_regularizer=slim.l2_regularizer(2.5e-4), normalizer_fn=slim.batch_norm, normalizer_params={'decay': 0.9, 'epsilon': 5e-4, 'scale': False, 'is_training':is_training}):
+            net = backbone
+            if FLAGS.finetune:
+                net = tf.stop_gradient(net)
+            net = slim_multistep_upscale(net, FLAGS.backbone_stride, FLAGS.reduction)
+            logits = slim.conv2d(net, classes, 3, 1, activation_fn=None, padding='SAME')
         if FLAGS.finetune:
             assert FLAGS.colorspace == 'RGB'
             def is_trainable (x):

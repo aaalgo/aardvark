@@ -13,6 +13,7 @@ from tqdm import tqdm
 import numpy as np
 import tensorflow as tf
 import picpac
+from tf_utils import *
 import __main__
 
 flags = tf.app.flags
@@ -179,9 +180,6 @@ class ClassificationModel(Model):
                 self.images: images,
                 self.labels: meta.labels}
     pass
-
-def dice_loss (gt, prob):
-    return -2 * (tf.reduce_sum(gt * prob) + 0.00001) / (tf.reduce_sum(gt) + tf.reduce_sum(prob) + 0.00001)
 
 class SegmentationModel(Model):
 

@@ -17,7 +17,7 @@ reduction=4            # reduce channels by this factor before deconv
                      --fix_height 400 \
                      --max_size 640 \
                      --classes 2 \
-                     --val_epochs 1  \
+                     --val_epochs 10  \
                      --patch_slim \
                      --noadam \
                      --weight_decay 2.5e-4 \
