@@ -18,6 +18,7 @@ flags.DEFINE_integer('backbone_stride', 16, '')
 flags.DEFINE_float('weight_decay', 0.00004, '')
 flags.DEFINE_boolean('patch_slim', False, '')
 flags.DEFINE_integer('reduction', 1, '')
+flags.DEFINE_integer('multistep', 0, '')
 
 PIXEL_MEANS = tf.constant([[[[103.94, 116.78, 123.68]]]])   # VGG PIXEL MEANS USED BY TF SLIM
 
@@ -39,17 +40,20 @@ class Model (aardvark.SegmentationModel):
 
         backbone, _ = network_fn(images-PIXEL_MEANS, global_pool=False, output_stride=FLAGS.backbone_stride, scope=FLAGS.backbone)
 
-        with tf.variable_scope('head'), \
-             slim.arg_scope([slim.conv2d, slim.conv2d_transpose], weights_regularizer=slim.l2_regularizer(2.5e-4), normalizer_fn=slim.batch_norm, normalizer_params={'decay': 0.9, 'epsilon': 5e-4, 'scale': False, 'is_training':is_training}):
-            net = backbone
-            if FLAGS.finetune:
-                net = tf.stop_gradient(net)
-            net = slim_multistep_upscale(net, FLAGS.backbone_stride, FLAGS.reduction)
-            logits = slim.conv2d(net, classes, 3, 1, activation_fn=None, padding='SAME')
+        if FLAGS.finetune:
+            backbone = tf.stop_gradient(backbone)
+        with slim.arg_scope([slim.conv2d, slim.conv2d_transpose], weights_regularizer=slim.l2_regularizer(2.5e-4), normalizer_fn=slim.batch_norm, normalizer_params={'decay': 0.9, 'epsilon': 5e-4, 'scale': False, 'is_training':is_training}):
+            if FLAGS.multistep > 0:
+                if FLAGS.multistep == 1:
+                    aardvark.print_red("multistep = 1 doesn't converge well")
+                net = slim_multistep_upscale(backbone, FLAGS.backbone_stride, FLAGS.reduction, FLAGS.multistep)
+                logits = slim.conv2d(net, classes, 3, 1, activation_fn=None, padding='SAME')
+            else:
+                logits = slim.conv2d_transpose(backbone, classes, FLAGS.backbone_stride * 2, FLAGS.backbone_stride, activation_fn=None, padding='SAME')
         if FLAGS.finetune:
             assert FLAGS.colorspace == 'RGB'
             def is_trainable (x):
-                return x.startswith('head')
+                return not x.startswith(FLAGS.backbone)
             self.init_session, self.variables_to_train = aardvark.setup_finetune(FLAGS.finetune, is_trainable)
         return logits
 

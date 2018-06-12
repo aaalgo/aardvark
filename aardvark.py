@@ -256,6 +256,7 @@ def setup_finetune (ckpt, is_trainable):
     model_vars = tf.get_collection(tf.GraphKeys.MODEL_VARIABLES)
     for var in model_vars:
         if not is_trainable(var.op.name):
+            #print(var.op.name)
             variables_to_restore.append(var)
 
     if tf.gfile.IsDirectory(ckpt):
