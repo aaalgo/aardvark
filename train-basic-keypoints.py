@@ -109,14 +109,6 @@ class Model (aardvark.Model):
             #xe = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits2, labels=mask)
             dice = tf.identity(dice_loss(mask, prob), name='di')
 
-            ''''
-            mask = tf.reshape(mask, (-1, ))
-            mask = tf.cast(mask, tf.float32)
-            w = (FLAGS.pos_weight-1.0) * mask + 1.0
-            xe = tf.reduce_sum(xe * w) / (tf.reduce_sum(w) + 1)
-            xe = tf.check_numerics(xe, 'xe', name='xe')    # rpn xe
-            '''
-
             tf.losses.add_loss(dice)
             self.metrics.append(dice)
 
