@@ -48,13 +48,14 @@ def resnet_v2_18 (inputs,
                  output_stride=None,
                  reuse=None,
                  include_root_block=True,
-                 scope='resnet_v2_18'):
+                 scope='resnet_v2_18',
+                 reduction=1):
   resnet_v2_block = resnet_v2.resnet_v2_block
   blocks = [
-      resnet_v2_block('block1', base_depth=64, num_units=2, stride=2),
-      resnet_v2_block('block2', base_depth=128, num_units=2, stride=2),
-      resnet_v2_block('block3', base_depth=256, num_units=2, stride=2),
-      resnet_v2_block('block4', base_depth=512, num_units=2, stride=1),
+      resnet_v2_block('block1', base_depth=64//reduction, num_units=2, stride=2),
+      resnet_v2_block('block2', base_depth=128//reduction, num_units=2, stride=2),
+      resnet_v2_block('block3', base_depth=256//reduction, num_units=2, stride=2),
+      resnet_v2_block('block4', base_depth=512//reduction, num_units=2, stride=1),
   ]
   return resnet_v2.resnet_v2(
       inputs,
@@ -71,11 +72,16 @@ def resnet_v2_18_cifar (inputs, num_classes=None, is_training=True,
                         reuse=None, scope='resnet_v2_18_cifar'):
     return resnet_v2_18(inputs, num_classes, is_training, reuse=reuse, include_root_block=False, scope=scope)
 
+def resnet_v2_18_slim (inputs, num_classes=None, is_training=True, global_pool=True, output_stride=None,
+                        reuse=None, scope='resnet_v2_18_slim'):
+    return resnet_v2_18(inputs, num_classes, is_training, global_pool=global_pool, output_stride=output_stride, reuse=reuse, include_root_block=True, scope=scope, reduction=2)
 
 def extend ():
-    nets_factory.networks_map['resnet_v2'] = resnet_v2
+    nets_factory.networks_map['resnet_v2_18'] = resnet_v2_18
     nets_factory.networks_map['resnet_v2_18_cifar'] = resnet_v2_18_cifar
-    nets_factory.arg_scopes_map['resnet_18'] = resnet_v2.resnet_arg_scope
+    nets_factory.networks_map['resnet_v2_18_slim'] = resnet_v2_18_slim
+    nets_factory.arg_scopes_map['resnet_v2_18'] = resnet_v2.resnet_arg_scope
     nets_factory.arg_scopes_map['resnet_v2_18_cifar'] = resnet_v2.resnet_arg_scope
+    nets_factory.arg_scopes_map['resnet_v2_18_slim'] = resnet_v2.resnet_arg_scope
     pass
 

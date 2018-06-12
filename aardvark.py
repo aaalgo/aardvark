@@ -180,15 +180,14 @@ class ClassificationModel(Model):
                 self.labels: meta.labels}
     pass
 
+def dice_loss (gt, prob):
+    return -2 * (tf.reduce_sum(gt * prob) + 0.00001) / (tf.reduce_sum(gt) + tf.reduce_sum(prob) + 0.00001)
+
 class SegmentationModel(Model):
 
     def __init__ (self):
         super().__init__()
         pass
-
-    @staticmethod
-    def dice_loss (gt, prob):
-        return -2 * (tf.reduce_sum(gt * prob) + 0.00001) / (tf.reduce_sum(gt) + tf.reduce_sum(prob) + 0.00001)
 
     @abstractmethod
     def inference (self, images, is_training):
@@ -210,7 +209,7 @@ class SegmentationModel(Model):
             prob = tf.squeeze(probs, 3, name='prob')
 
             labels = tf.squeeze(labels, axis=3)  # [?,?,?,1] -> [?,?,?], picpac generates 4-D tensor
-            dice = tf.identity(dice_loss(tf.cast(labels, df.float32), prob), name='di')
+            dice = tf.identity(dice_loss(tf.cast(labels, tf.float32), prob), name='di')
             tf.losses.add_loss(dice)
             self.metrics.append(dice)
         else:
