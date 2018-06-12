@@ -21,6 +21,7 @@ reduction=4            # reduce channels by this factor before deconv
                      --patch_slim \
                      --noadam \
                      --weight_decay 2.5e-4 \
+                     --max_epochs 200 \
                      --dice \
                      --model $MODEL \
                      $*
