@@ -20,7 +20,7 @@ MODEL=resnet_v2_18     # reduce --batch if OOM
                      --patch_slim \
                      --noadam \
                      --weight_decay 2.5e-5 \
-                     --max_epochs 120 \
+                     --max_epochs 400 \
                      --model $MODEL \
                      --offset_weight 0.1 \
                      $*

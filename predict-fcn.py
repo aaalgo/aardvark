@@ -45,7 +45,7 @@ def save_prediction_image (gal, image, prob):
     pass
 
 def main (_):
-    X = tf.placeholder(tf.float32, shape=(None, None, None, 3), name="images")
+    X = tf.placeholder(tf.float32, shape=(None, None, None, FLAGS.channels), name="images")
     model = Model(X, FLAGS.model, 'xxx')
     config = tf.ConfigProto()
     config.gpu_options.allow_growth=True
@@ -67,6 +67,7 @@ def main (_):
                         image = cv2.imread(path, cv2.IMREAD_COLOR)
                     elif FLAGS.channels == 1:
                         image = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+                        image = np.expand_dims(image, axis=3)
                     else:
                         assert False
                     H, W = image.shape[:2]
