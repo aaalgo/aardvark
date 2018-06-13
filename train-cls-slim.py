@@ -6,15 +6,12 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 from nets import nets_factory
 import aardvark
-from zoo import fuck_slim
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('finetune', None, '')
 flags.DEFINE_string('net', 'resnet_v2_50', 'architecture')
-flags.DEFINE_float('weight_decay', 0.00004, '')
-flags.DEFINE_boolean('patch_slim', False, '')
 
 
 class Model (aardvark.ClassificationModel):
@@ -23,15 +20,8 @@ class Model (aardvark.ClassificationModel):
         pass
 
     def inference (self, images, classes, is_training):
-        PIXEL_MEANS = tf.constant([[[[103.94, 116.78, 123.68]]]])   # VGG PIXEL MEANS USED BY TF SLIM
 
-        fuck_slim.extend()
-        if FLAGS.patch_slim:
-            fuck_slim.patch(is_training)
-        
-        network_fn = nets_factory.get_network_fn(FLAGS.net, num_classes=classes, is_training=is_training, weight_decay=FLAGS.weight_decay)
-
-        logits, _ = network_fn(images-PIXEL_MEANS[:,:,:,:FLAGS.channels], scope=FLAGS.net)
+        logits = aardvark.create_stock_slim_network(FLAGS.net, images, is_training, num_classes=classes, global_pool=True)
 
         if FLAGS.finetune:
             assert FLAGS.colorspace == 'RGB'

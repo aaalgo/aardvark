@@ -6,9 +6,7 @@ import logging
 import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
-from nets import nets_factory, resnet_utils 
 import aardvark
-from zoo import fuck_slim
 from tf_utils import *
 
 flags = tf.app.flags
@@ -18,8 +16,6 @@ flags.DEFINE_string('finetune', None, '')
 flags.DEFINE_string('backbone', 'resnet_v2_50', 'architecture')
 flags.DEFINE_integer('backbone_stride', 16, '')
 flags.DEFINE_integer('feature_channels', 64, '')
-flags.DEFINE_float('weight_decay', 0.00004, '')
-flags.DEFINE_boolean('patch_slim', False, '')
 
 flags.DEFINE_integer('stride', 4, '')
 flags.DEFINE_integer('radius', 25, '')
@@ -81,17 +77,9 @@ class Model (aardvark.Model):
             self.mask = mask
             self.gt_offsets = gt_offsets
 
-        if True:    # setup backbone
-            global PIXEL_MEANS
-            fuck_slim.extend()
-            if FLAGS.patch_slim:
-                fuck_slim.patch(is_training)
-            network_fn = nets_factory.get_network_fn(FLAGS.backbone, num_classes=None,
-                        weight_decay=FLAGS.weight_decay, is_training=is_training)
-            backbone, _ = network_fn(images-PIXEL_MEANS[:,:,:,:FLAGS.channels], global_pool=False, output_stride=FLAGS.backbone_stride, scope=FLAGS.backbone)
+        backbone = aardvark.create_stock_slim_network(FLAGS.backbone, images, is_training, global_pool=False, stride=FLAGS.backbone_stride)
 
-        with tf.variable_scope('head'), \
-             slim.arg_scope([slim.conv2d, slim.conv2d_transpose], weights_regularizer=slim.l2_regularizer(2.5e-4), normalizer_fn=slim.batch_norm, normalizer_params={'decay': 0.9, 'epsilon': 5e-4, 'scale': False, 'is_training':is_training}, padding='SAME'):
+        with tf.variable_scope('head'), slim.arg_scope(aardvark.default_argscope(is_training)):
 
             if FLAGS.finetune:
                 backbone = tf.stop_gradient(backbone)

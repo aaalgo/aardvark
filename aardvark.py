@@ -3,6 +3,8 @@
 # This is the basic aaalgo tensorflow model training framework.
 import errno
 import os
+import sys
+sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'zoo/slim'))
 from abc import ABC, abstractmethod
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 # C++ code, python3 setup.py build
@@ -12,8 +14,10 @@ import simplejson as json
 from tqdm import tqdm
 import numpy as np
 import tensorflow as tf
+from nets import nets_factory, resnet_utils 
 import picpac
 from tf_utils import *
+from zoo import fuck_slim
 import __main__
 
 flags = tf.app.flags
@@ -55,6 +59,10 @@ flags.DEFINE_float('lr', 0.01, 'Initial learning rate.')
 flags.DEFINE_float('decay_rate', 0.95, '')
 flags.DEFINE_float('decay_steps', 500, '')
 flags.DEFINE_boolean('adam', True, '')
+
+# stock slim networks
+flags.DEFINE_float('weight_decay', 0.00004, '')
+flags.DEFINE_boolean('patch_slim', False, '')
 
 
 def load_augments (is_training):
@@ -249,6 +257,20 @@ class SegmentationModel(Model):
                 self.labels: labels}
     pass
 
+def default_argscope (is_training):
+    return fuck_slim.patch_resnet_arg_scope(is_training)(weight_decay=FLAGS.weight_decay)
+
+def create_stock_slim_network (name, images, is_training, num_classes=None, global_pool=False, stride=None):
+    PIXEL_MEANS = tf.constant([[[[103.94, 116.78, 123.68]]]])
+    ch = images.shape[3]
+    fuck_slim.extend()
+    if FLAGS.patch_slim:
+	    fuck_slim.patch(is_training)
+    network_fn = nets_factory.get_network_fn(name, num_classes=num_classes,
+		weight_decay=FLAGS.weight_decay, is_training=is_training)
+    net, _ = network_fn(images - PIXEL_MEANS[:, :, :, :ch], global_pool=global_pool, output_stride=stride, scope=name)
+    return net
+
 def setup_finetune (ckpt, is_trainable):
     print("Finetuning %s" % ckpt)
     # TODO(sguada) variables.filter_variables()
@@ -281,7 +303,7 @@ def setup_finetune (ckpt, is_trainable):
 
 class Metrics:  # display metrics
     def __init__ (self, model):
-        self.metric_names = [x.name[:-2] for x in model.metrics]
+        self.metric_names = [x.name[:-2].split('/')[-1] for x in model.metrics]
         self.cnt, self.sum = 0, np.array([0] * len(model.metrics), dtype=np.float32)
         pass
 
@@ -351,10 +373,13 @@ def train (model):
         global_start_time = time.time()
         epoch, step = 0, 0
 
+        #bar_format = '{desc}: {percentage:03.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]'
+        bar_format = '{desc}|{bar}|{n_fmt}/{total_fmt}[{elapsed}<{remaining},{rate_fmt}]'
+
         while epoch < FLAGS.max_epochs:
             start_time = time.time()
             metrics = Metrics(model)
-            progress = tqdm(range(epoch_steps), leave=False)
+            progress = tqdm(range(epoch_steps), leave=False, bar_format=bar_format)
             for _ in progress:
                 record = stream.next()
                 mm, _ = sess.run([model.metrics, train_op], feed_dict=model.feed_dict(record, True))
@@ -375,7 +400,7 @@ def train (model):
                 # evaluation
                 metrics = Metrics(model)
                 val_stream.reset()
-                progress = tqdm(val_stream, leave=False)
+                progress = tqdm(val_stream, leave=False, bar_format=bar_format)
                 for record in progress:
                     mm = sess.run(model.metrics, feed_dict=model.feed_dict(record, False))
                     metrics_txt = metrics.update(mm, record[1].shape[0])

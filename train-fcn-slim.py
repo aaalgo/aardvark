@@ -15,12 +15,8 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('finetune', None, '')
 flags.DEFINE_string('backbone', 'resnet_v2_50', 'architecture')
 flags.DEFINE_integer('backbone_stride', 16, '')
-flags.DEFINE_float('weight_decay', 0.00004, '')
-flags.DEFINE_boolean('patch_slim', False, '')
 flags.DEFINE_integer('reduction', 1, '')
 flags.DEFINE_integer('multistep', 0, '')
-
-PIXEL_MEANS = tf.constant([[[[103.94, 116.78, 123.68]]]])   # VGG PIXEL MEANS USED BY TF SLIM
 
 class Model (aardvark.SegmentationModel):
     def __init__ (self):
@@ -29,16 +25,8 @@ class Model (aardvark.SegmentationModel):
 
     def inference (self, images, classes, is_training):
         assert FLAGS.clip_stride % FLAGS.backbone_stride == 0
-        global PIXEL_MEANS
 
-        fuck_slim.extend()
-        if FLAGS.patch_slim:
-            fuck_slim.patch(is_training)
-
-        network_fn = nets_factory.get_network_fn(FLAGS.backbone, num_classes=None,
-                        weight_decay=FLAGS.weight_decay, is_training=is_training)
-
-        backbone, _ = network_fn(images-PIXEL_MEANS[:,:,:,:FLAGS.channels], global_pool=False, output_stride=FLAGS.backbone_stride, scope=FLAGS.backbone)
+        backbone = aardvark.create_stock_slim_network(FLAGS.backbone, images, is_training, global_pool=False, stride=FLAGS.backbone_stride)
 
         if FLAGS.finetune:
             backbone = tf.stop_gradient(backbone)
