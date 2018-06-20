@@ -30,7 +30,8 @@ class Model (aardvark.SegmentationModel):
 
         if FLAGS.finetune:
             backbone = tf.stop_gradient(backbone)
-        with slim.arg_scope([slim.conv2d, slim.conv2d_transpose], weights_regularizer=slim.l2_regularizer(2.5e-4), normalizer_fn=slim.batch_norm, normalizer_params={'decay': 0.9, 'epsilon': 5e-4, 'scale': False, 'is_training':is_training}):
+
+        with slim.arg_scope(aardvark.default_argscope(self.is_training)):
             if FLAGS.multistep > 0:
                 if FLAGS.multistep == 1:
                     aardvark.print_red("multistep = 1 doesn't converge well")
@@ -38,6 +39,7 @@ class Model (aardvark.SegmentationModel):
                 logits = slim.conv2d(net, classes, 3, 1, activation_fn=None, padding='SAME')
             else:
                 logits = slim.conv2d_transpose(backbone, classes, FLAGS.backbone_stride * 2, FLAGS.backbone_stride, activation_fn=None, padding='SAME')
+
         if FLAGS.finetune:
             assert FLAGS.colorspace == 'RGB'
             def is_trainable (x):

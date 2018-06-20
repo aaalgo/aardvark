@@ -33,6 +33,7 @@ flags.DEFINE_string('input_db', None, '')
 flags.DEFINE_integer('stride', 4, '')
 flags.DEFINE_integer('backbone_stride', 16, '')
 flags.DEFINE_integer('max', 50, '')
+flags.DEFINE_integer('max_size', 20000, '')
 
 flags.DEFINE_float('anchor_th', 0.5, '')
 
@@ -86,6 +87,7 @@ def main (_):
                       "batch": 1,
                       "annotate": [1],
                       "transforms": [
+                          {"type": "resize", "max_size": FLAGS.max_size},
                           {"type": "clip", "round": FLAGS.backbone_stride},
                           {"type": "keypoints.basic", 'downsize': 1, 'classes': 1, 'radius': 25},
                           {"type": "drop"}, # remove original annotation 

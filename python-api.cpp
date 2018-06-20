@@ -49,8 +49,9 @@ namespace {
     class GTMatcher {
         float iou_th;
         int max;
+        float min_size;
     public:
-        GTMatcher (float th_, int max_): iou_th(th_), max(max_) {
+        GTMatcher (float th_, int max_, float min_size_): iou_th(th_), max(max_), min_size(min_size_) {
         }
 
         list apply (np::ndarray boxes,
@@ -82,6 +83,8 @@ namespace {
                     if (box_ind[j] != ind) continue; // not the same image
                     if (used[j]) continue;
                     float const *b = (float const *)(boxes.get_data() + boxes.strides(0) * j);
+                    if (b[2] - b[0] < min_size) continue;
+                    if (b[3] - b[1] < min_size) continue;
                     float s = iou_score(gt, b);
                     if (s > iou) {
                         iou = s;
@@ -232,7 +235,7 @@ namespace {
 BOOST_PYTHON_MODULE(cpp)
 {
     np::initialize();
-    class_<GTMatcher>("GTMatcher", init<float, int>())
+    class_<GTMatcher>("GTMatcher", init<float, int, float>())
         .def("apply", &GTMatcher::apply)
     ;
     class_<MaskExtractor>("MaskExtractor", init<int, int>())

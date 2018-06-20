@@ -23,7 +23,7 @@ def patch_resnet_arg_scope (is_training):
           'is_training': is_training
       }
       with slim.arg_scope(
-          [slim.conv2d],
+          [slim.conv2d, slim.conv2d_transpose],
           weights_regularizer=slim.l2_regularizer(weight_decay),
           #Removing following 2 improves cifar10 performance
           #weights_initializer=slim.variance_scaling_initializer(),

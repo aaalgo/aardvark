@@ -64,6 +64,8 @@ flags.DEFINE_boolean('adam', True, '')
 flags.DEFINE_float('weight_decay', 0.00004, '')
 flags.DEFINE_boolean('patch_slim', False, '')
 
+flags.DEFINE_boolean('compact', False, 'compact progress bar')
+
 
 def load_augments (is_training):
     augments = []
@@ -260,7 +262,9 @@ class SegmentationModel(Model):
 def default_argscope (is_training):
     return fuck_slim.patch_resnet_arg_scope(is_training)(weight_decay=FLAGS.weight_decay)
 
-def create_stock_slim_network (name, images, is_training, num_classes=None, global_pool=False, stride=None):
+def create_stock_slim_network (name, images, is_training, num_classes=None, global_pool=False, stride=None, scope=None):
+    if scope is None:
+        scope = name
     PIXEL_MEANS = tf.constant([[[[103.94, 116.78, 123.68]]]])
     ch = images.shape[3]
     fuck_slim.extend()
@@ -268,7 +272,7 @@ def create_stock_slim_network (name, images, is_training, num_classes=None, glob
 	    fuck_slim.patch(is_training)
     network_fn = nets_factory.get_network_fn(name, num_classes=num_classes,
 		weight_decay=FLAGS.weight_decay, is_training=is_training)
-    net, _ = network_fn(images - PIXEL_MEANS[:, :, :, :ch], global_pool=global_pool, output_stride=stride, scope=name)
+    net, _ = network_fn(images - PIXEL_MEANS[:, :, :, :ch], global_pool=global_pool, output_stride=stride, scope=scope)
     return net
 
 def setup_finetune (ckpt, is_trainable):
@@ -374,7 +378,11 @@ def train (model):
         epoch, step = 0, 0
 
         #bar_format = '{desc}: {percentage:03.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]'
-        bar_format = '{desc}|{bar}|{n_fmt}/{total_fmt}[{elapsed}<{remaining},{rate_fmt}]'
+        #bar_format = '{desc}|{bar}|{n_fmt}/{total_fmt}[{elapsed}<{remaining},{rate_fmt}]'
+        if FLAGS.compact:
+            bar_format = '{desc}|{n_fmt}/{total_fmt},{rate_fmt}'
+        else:
+            bar_format = '{desc}: {percentage:03.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]'
 
         while epoch < FLAGS.max_epochs:
             start_time = time.time()
@@ -387,16 +395,16 @@ def train (model):
                 progress.set_description(metrics_txt)
                 step += 1
                 pass
+            lr = sess.run(LR)
             stop = time.time()
-            msg = 'train epoch=%d step=%d %s elapsed=%.3f time=%.3f' % (
-                        epoch, step, metrics_txt, stop - global_start_time, stop - start_time)
+            msg = 'train epoch=%d step=%d %s elapsed=%.3f time=%.3f lr=%.4f' % (
+                        epoch, step, metrics_txt, stop - global_start_time, stop - start_time, lr)
             print_green(msg)
             logging.info(msg)
 
             epoch += 1
 
             if (epoch % FLAGS.val_epochs == 0) and val_stream:
-                lr = sess.run(LR)
                 # evaluation
                 metrics = Metrics(model)
                 val_stream.reset()
