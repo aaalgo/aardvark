@@ -34,9 +34,10 @@ def import_db (db_path, list_path):
             assert part in PARTS
             k = PARTS[part]
             label = k * 2 + l
-            db.append(label, load_file('data/' + path))
+            db.append(label, load_file('data/' + path), path.encode('ascii'))
         pass
     pass
 
-import_db('scratch/train.db', 'train.list')
-import_db('scratch/val.db', 'val.list')
+#import_db('scratch/train.db', 'train.list')
+#import_db('scratch/val.db', 'val.list')
+import_db('scratch/val0.db', 'val0.list')

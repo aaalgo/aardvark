@@ -17,4 +17,5 @@
                      --patch_slim \
                      --noadam \
                      --weight_decay 2.5e-4 \
+                     --border_type replicate \
                      $*

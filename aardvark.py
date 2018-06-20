@@ -35,6 +35,7 @@ flags.DEFINE_boolean('cache', True, 'cache images in memory') # cache small db i
 flags.DEFINE_string('augments', 'augments.json', 'augment config file')
 flags.DEFINE_string('colorspace', 'RGB', 'colorspace')
 flags.DEFINE_integer('picpac_dump', 20, 'dump training example for debugging')
+flags.DEFINE_string('border_type', 'constant', '')
 
 flags.DEFINE_integer('batch', 1, 'batch size')
 
@@ -179,7 +180,7 @@ class ClassificationModel(Model):
         return {"transforms": [
                   {"type": "resize", "max_size": FLAGS.max_size},
                   ] + augments + [
-                      {"type": "clip", "shift": shift, "width": FLAGS.fix_width, "height": FLAGS.fix_height, "round": FLAGS.clip_stride, "border_type": "replicate"},
+                      {"type": "clip", "shift": shift, "width": FLAGS.fix_width, "height": FLAGS.fix_height, "round": FLAGS.clip_stride, "border_type": FLAGS.border_type},
                   ]
              }
 
