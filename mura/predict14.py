@@ -79,7 +79,7 @@ def main (_):
                 else:
                     l = 0
                 f.write('%s,%d\n' % (k, l))
-                f.write('%s,%g\n' % (k, prob))
+                f2.write('%s,%g\n' % (k, prob))
                 pass
     pass
 
