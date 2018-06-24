@@ -392,7 +392,7 @@ def train (model):
             for _ in progress:
                 record = stream.next()
                 mm, _ = sess.run([model.metrics, train_op], feed_dict=model.feed_dict(record, True))
-                metrics_txt = metrics.update(mm, record[1].shape[0])
+                metrics_txt = metrics.update(mm, record[0].ids[0])
                 progress.set_description(metrics_txt)
                 step += 1
                 pass
