@@ -37,7 +37,7 @@ def patch_resnet_arg_scope (is_training):
 
 def patch (is_training):
     asc = patch_resnet_arg_scope(is_training)
-    keys = [key for key in nets_factory.arg_scopes_map.keys() if 'resnet_' in key]
+    keys = [key for key in nets_factory.arg_scopes_map.keys() if 'resnet_' in key or 'densenet' in key]
     for key in keys:
         nets_factory.arg_scopes_map[key] = asc
 
