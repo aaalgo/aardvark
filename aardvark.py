@@ -323,6 +323,8 @@ def train (model):
     bname = os.path.splitext(os.path.basename(__main__.__file__))[0]
     logging.basicConfig(filename='%s-%s.log' % (bname, datetime.datetime.now().strftime('%Y%m%d-%H%M%S')),level=logging.DEBUG, format='%(asctime)s %(message)s')
 
+    logging.info("cwd: %s" % os.getcwd())
+    logging.info("cmdline: %s" % (' '.join(sys.argv)))
     model.build_graph()
 
     if FLAGS.model:
