@@ -172,6 +172,8 @@ class FasterRCNN (aardvark.Model):
         if os.path.exists('priors'):
             with open('priors', 'r') as f:
                 for l in f:
+                    if l[0] == '#':
+                        continue
                     s, r = l.strip().split(' ')
                     s, r = float(s), float(r)
                     # w * h = s * s
@@ -259,11 +261,14 @@ class FasterRCNN (aardvark.Model):
             dice, dice_chs = weighted_dice_loss_by_channel(self.gt_anchors, anchors, self.gt_anchors_weight, self.n_priors)
             activation_loss = tf.identity(dice, name='di')
             prob = tf.reshape(anchors, (-1,))
-            '''
             if not FLAGS.rcnnonly:
-                tf.losses.add_loss(dice * FLAGS.di_weight1)
-                self.metrics.append(dice)
-            '''
+                #tf.losses.add_loss(dice * FLAGS.di_weight1)
+                '''
+                self.metrics.append(tf.identity(dice_chs[0], name='c0'))
+                self.metrics.append(tf.identity(dice_chs[1], name='c1'))
+                self.metrics.append(tf.identity(dice_chs[2], name='c2'))
+                '''
+                pass
         else:
             logits = self.rpn_activation(self.n_priors * 2, FLAGS.anchor_stride)
             logits2 = tf.reshape(logits, (-1, 2))   # ? * 2
