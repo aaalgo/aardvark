@@ -180,7 +180,7 @@ class ClassificationModel(Model):
         return {"transforms": [
                   {"type": "resize", "max_size": FLAGS.max_size},
                   ] + augments + [
-                      {"type": "clip", "shift": shift, "width": FLAGS.fix_width, "height": FLAGS.fix_height, "round": FLAGS.clip_stride, "border_type": FLAGS.border_type},
+                      {"type": "clip", "shift": shift, "width": FLAGS.fix_width, "height": FLAGS.fix_height, "border_type": FLAGS.border_type},
                   ]
              }
 
