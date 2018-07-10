@@ -1,0 +1,6 @@
+[
+ {"type": "augment.flip", "horizontal": true, "vertical": true, "transpose": true},
+ {"type": "augment.scale", "min":0.6, "max":2.5},
+ {"type": "augment.rotate", "range": 30},
+ {"type": "augment.add", "range":20}
+]

@@ -15,6 +15,7 @@ import cpp
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
+flags.DEFINE_string('priors', 'priors', '')
 flags.DEFINE_integer('anchor_stride', 4, '')
 
 flags.DEFINE_integer('pooling_size', 7, '')
@@ -169,8 +170,8 @@ class FasterRCNN (aardvark.Model):
         super().__init__()
         self.gt_matcher = cpp.GTMatcher(FLAGS.match_th, FLAGS.max_masks, min_size)
         self.priors = []
-        if os.path.exists('priors'):
-            with open('priors', 'r') as f:
+        if os.path.exists(FLAGS.priors):
+            with open(FLAGS.priors, 'r') as f:
                 for l in f:
                     if l[0] == '#':
                         continue
@@ -184,6 +185,8 @@ class FasterRCNN (aardvark.Model):
                     pass
                 pass
             pass
+        aardvark.print_red("PRIORS %s" % str(self.priors))
+        # TODO: need a better way to generalize this to multiple priors and 0 priors
         self.n_priors = len(self.priors)
         if self.n_priors == 0:
             self.n_priors = 1
@@ -191,16 +194,18 @@ class FasterRCNN (aardvark.Model):
 
     def feed_dict (self, record, is_training = True):
         global dump_cnt
-        _, images, _, gt_anchors, gt_anchors_weight, gt_params, gt_params_weight, gt_boxes = record
+        _, images, _, gt_anchors, gt_anchors_weight, \
+                      gt_params, gt_params_weight, gt_boxes = record
         assert np.all(gt_anchors < 2)
-        gt_boxes = np.reshape(gt_boxes, [-1, 7])
+        gt_boxes = np.reshape(gt_boxes, [-1, 7])    # make sure shape is correct
         if dump_cnt < 20:
+            # dump images for sanity check
             for i in range(images.shape[0]):
-                cv2.imwrite('picpac_dump2/%d_image.png' % dump_cnt, images[i])
+                cv2.imwrite('picpac_dump2/%d_a_image.png' % dump_cnt, images[i])
                 for j in range(gt_anchors.shape[3]):
-                    cv2.imwrite('picpac_dump2/%d_anchor_%d.png' % (dump_cnt, j), gt_anchors[i,:,:,j]*255)
-                    cv2.imwrite('picpac_dump2/%d_mask_%d.png' % (dump_cnt, j), gt_anchors_weight[i,:,:,j]*255)
-                    cv2.imwrite('picpac_dump2/%d_weight_%d.png' % (dump_cnt, j), gt_params_weight[i,:,:,j]*255)
+                    cv2.imwrite('picpac_dump2/%d_b_%d_anchor.png' % (dump_cnt, j), gt_anchors[i,:,:,j]*255)
+                    cv2.imwrite('picpac_dump2/%d_c_%d_mask.png' % (dump_cnt, j), gt_anchors_weight[i,:,:,j]*255)
+                    cv2.imwrite('picpac_dump2/%d_d_%d_weight.png' % (dump_cnt, j), gt_params_weight[i,:,:,j]*255)
                 dump_cnt += 1
 
 
@@ -294,6 +299,8 @@ class FasterRCNN (aardvark.Model):
 
         pl = weighted_loss_by_channel(params_loss_rpn(params, gt_params, priors2), gt_params_weight, self.n_priors)
         pl = tf.check_numerics(pl, 'p1', name='p1') # params-loss
+
+        tf.identity(prob, name='rpn_all_probs')
 
         if not FLAGS.rcnnonly:
             tf.losses.add_loss(activation_loss * FLAGS.rpn_act_weight)
