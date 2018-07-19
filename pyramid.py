@@ -2,7 +2,7 @@
 import numpy as np
 import cv2
 
-def spiral_helper (canvas, mask, rois, canvas_offset, image, horizontal, threshold):
+def pyramid_helper (canvas, mask, rois, canvas_offset, image, horizontal, threshold):
     H, W = canvas.shape[:2]
     h, w = image.shape[:2]
     if min(h, w) < threshold:
@@ -29,10 +29,10 @@ def spiral_helper (canvas, mask, rois, canvas_offset, image, horizontal, thresho
         canvas = canvas[o:, :, :]
         mask = mask[o:, :]
         y0 += o
-    spiral_helper(canvas, mask, rois, (x0, y0), image, not horizontal, threshold)
+    pyramid_helper(canvas, mask, rois, (x0, y0), image, not horizontal, threshold)
     pass
 
-class Spiral:
+class Pyramid:
     def __init__ (self, image, threshold=64, stride=16, min_size=600):
         self.image = image
         # returns canvas, mask, rois
@@ -58,10 +58,10 @@ class Spiral:
         canvas = np.zeros((H, W, C), image.dtype)
         mask = np.zeros((H, W), np.int32)
         rois = [(0, 0, 0, 0)]   # rois[0] is not used
-        spiral_helper(canvas, mask, rois, (0, 0), image, True, threshold)
+        pyramid_helper(canvas, mask, rois, (0, 0), image, True, threshold)
         if C == 1:
             canvas = canvas[:, :, 0]
-        self.spiral = canvas
+        self.pyramid = canvas
         self.mask = mask
         self.rois = rois
         pass
@@ -95,18 +95,9 @@ class Spiral:
 
 if __name__ == '__main__':
     image = cv2.imread('lenna.png', -1)
-    sp = Spiral(image, 16)
-    cv2.imwrite('spiral.png', sp.image)
+    sp = Pyramid(image, 16)
+    cv2.imwrite('pyramid.png', sp.pyramid)
     cv2.normalize(sp.mask, sp.mask, 0, 255, cv2.NORM_MINMAX)
-    cv2.imwrite('spiral_mask.png', sp.mask)
+    cv2.imwrite('pyramid_mask.png', sp.mask)
     pass
 
-'''
-class ImageSpiral:
-    def __init__ (self, image):
-
-        pass
-
-
-    pass
-'''

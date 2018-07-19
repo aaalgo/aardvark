@@ -105,6 +105,9 @@ def create_picpac_stream (path, is_training, extra_config):
 
     if is_training:
         config["dump"] = FLAGS.picpac_dump # dump 20 training samples for debugging and see
+    else:
+        config['threads'] = 1
+
 
     if is_training and not FLAGS.mixin is None:
         print("mixin support is incomplete in new picpac.")
