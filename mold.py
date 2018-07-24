@@ -1,4 +1,4 @@
-
+import numpy as np
 class Padding:
     def __init__ (self, stride):
         self.stride = stride
