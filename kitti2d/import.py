@@ -25,8 +25,7 @@ def import_db (db_path, list_path):
     db = picpac.Writer(db_path, picpac.OVERWRITE)
 
     tasks = read_list(list_path)
-    #for number in tqdm(tasks):
-    for number in tasks:
+    for number in tqdm(tasks):
         image_path = os.path.join('data/training/image_2', '%06d.png' % number)
         label_path = os.path.join('data/training/label_2', '%06d.txt' % number)
 
