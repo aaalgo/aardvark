@@ -71,7 +71,7 @@ def resnet_v2_18 (inputs,
 def resnet_v2_18_cifar (inputs, num_classes=None, is_training=True, global_pool=False, output_stride=None,
                         reuse=None, scope='resnet_v2_18_cifar'):
     #assert global_pool
-    return resnet_v2_18(inputs, num_classes, is_training, global_pool=global_pool, reuse=reuse, include_root_block=False, scope=scope)
+    return resnet_v2_18(inputs, num_classes, is_training, global_pool=global_pool, output_stride=output_stride, reuse=reuse, include_root_block=False, scope=scope)
 
 def resnet_v2_18_slim (inputs, num_classes=None, is_training=True, global_pool=True, output_stride=None,
                         reuse=None, scope='resnet_v2_18_slim'):
