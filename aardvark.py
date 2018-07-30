@@ -40,6 +40,7 @@ flags.DEFINE_string('border_type', 'constant', '')
 flags.DEFINE_integer('batch', 1, 'batch size')
 
 flags.DEFINE_integer('max_size', 200000, 'max image size') 
+flags.DEFINE_integer('min_size', 1, 'min image size') 
 flags.DEFINE_integer('fix_width', 0, '')
 flags.DEFINE_integer('fix_height', 0, '')
 
@@ -181,7 +182,7 @@ class ClassificationModel(Model):
         if is_training:
             shift = FLAGS.clip_shift
         return {"transforms": [
-                  {"type": "resize", "max_size": FLAGS.max_size},
+                {"type": "resize", "max_size": FLAGS.max_size, "min_size": FLAGS.min_size},
                   ] + augments + [
                       {"type": "clip", "shift": shift, "width": FLAGS.fix_width, "height": FLAGS.fix_height, "border_type": FLAGS.border_type},
                   ]
@@ -248,7 +249,7 @@ class SegmentationModel(Model):
             shift = FLAGS.clip_shift
         return {"annotate": [1],
                 "transforms": [
-                  {"type": "resize", "max_size": FLAGS.max_size},
+                  {"type": "resize", "max_size": FLAGS.max_size, "min_size": FLAGS.min_size},
                   ] + augments + [
                   {"type": "clip", "shift": shift, "width": FLAGS.fix_width, "height": FLAGS.fix_height, "round": FLAGS.clip_stride},
                   {"type": "rasterize"},
