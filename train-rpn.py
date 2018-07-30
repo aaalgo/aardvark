@@ -11,7 +11,7 @@ import tensorflow.contrib.slim as slim
 from nets import nets_factory, resnet_utils 
 import aardvark
 import cv2
-from faster_rcnn import FasterRCNN
+from rpn import RPN
 import cpp
 
 flags = tf.app.flags
@@ -21,7 +21,7 @@ flags.DEFINE_string('backbone', 'resnet_v2_50', 'architecture')
 flags.DEFINE_integer('backbone_stride', 16, '')
 
 
-class Model (FasterRCNN):
+class Model (RPN):
     def __init__ (self):
         super().__init__(FLAGS.backbone_stride)
         pass

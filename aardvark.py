@@ -135,15 +135,29 @@ class Model(ABC):
     def init_session (self, sess):
         pass
 
-    def extra_stream_config (self, is_training):
-        return {}
+    @abstractmethod
+    def create_stream (self, path, is_training):
+        pass
 
     @abstractmethod
     def feed_dict (self, record):
         pass
     pass
 
-class ClassificationModel(Model):
+class Model2D (Model):
+
+    def __init__ (self):
+        # build model here
+        super().__init__()
+
+    def extra_stream_config (self, is_training):
+        return {}
+
+    def create_stream (self, path, is_training):
+        return create_picpac_stream(path, is_training, self.extra_stream_config(True))
+    pass
+
+class ClassificationModel(Model2D):
 
     def __init__ (self):
         super().__init__()
@@ -196,7 +210,7 @@ class ClassificationModel(Model):
                 self.labels: meta.labels}
     pass
 
-class SegmentationModel(Model):
+class SegmentationModel(Model2D):
 
     def __init__ (self):
         super().__init__()
@@ -360,11 +374,11 @@ def train (model):
     train_op = tf.contrib.training.create_train_op(total_loss, optimizer, global_step=global_step, variables_to_train=model.variables_to_train)
     saver = tf.train.Saver(max_to_keep=FLAGS.max_to_keep)
 
-    stream = create_picpac_stream(FLAGS.db, True, model.extra_stream_config(True))
+    stream = model.create_stream(FLAGS.db, True)
     # load validation db
     val_stream = None
     if FLAGS.val_db:
-        val_stream = create_picpac_stream(FLAGS.val_db, False, model.extra_stream_config(False))
+        val_stream = model.create_stream(FLAGS.val_db, False)
 
     epoch_steps = FLAGS.epoch_steps
     if epoch_steps is None:

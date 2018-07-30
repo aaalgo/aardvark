@@ -165,7 +165,7 @@ def params_loss (params, gt_params):
 
 dump_cnt = 0
 
-class FasterRCNN (aardvark.Model):
+class FasterRCNN (aardvark.Model2D):
     def __init__ (self, min_size=1):
         super().__init__()
         self.gt_matcher = cpp.GTMatcher(FLAGS.match_th, FLAGS.max_masks, min_size)
@@ -221,7 +221,7 @@ class FasterRCNN (aardvark.Model):
                 self.gt_boxes: gt_boxes}
 
     @abstractmethod
-    def build_backbone (self):
+    def build_backbone (self, images):
         pass
 
     @abstractmethod
@@ -258,7 +258,7 @@ class FasterRCNN (aardvark.Model):
 
         priors2 = tf.tile(priors,[1,1,2])
 
-        self.build_backbone()
+        self.build_backbone(self.images)
 
         if FLAGS.dice:
             anchors = self.rpn_activation(self.n_priors, FLAGS.anchor_stride)
