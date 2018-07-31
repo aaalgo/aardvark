@@ -81,9 +81,8 @@ class BasicRPN (aardvark.Model2D):
     def rpn_parameters (self, channels, stride):
         pass
 
-    @abstractmethod
     def rpn_generate_shapes (self, shape, anchor_params, priors, n_priors):
-        pass
+        return None
 
     def non_max_supression (self):
         return None
@@ -133,6 +132,7 @@ class BasicRPN (aardvark.Model2D):
             pass
 
         params = self.rpn_parameters(self.rpn_params_size() * self.n_priors, FLAGS.anchor_stride)
+        tf.params(params, name='rpn_all_params')
         anchor_layer_shape = tf.shape(params)
         params = tf.reshape(params, (-1, self.n_priors, self.rpn_params_size()))     # ? * 4
         gt_params = tf.reshape(self.gt_params, (-1, self.n_priors, self.rpn_params_size()))
@@ -151,7 +151,12 @@ class BasicRPN (aardvark.Model2D):
 
         #prob = tf.reshape(anchors, (-1,))
         # index is index within mini batch
-        shapes, index = self.rpn_generate_shapes(anchor_layer_shape, params, priors2, self.n_priors)
+        shape_and_index = self.rpn_generate_shapes(anchor_layer_shape, params, priors2, self.n_priors)
+
+        if shape_and_index is None:
+            return 
+
+        shapes, index = shape_and_index
 
         with tf.device('/cpu:0'):
             # fuck tensorflow, these lines fail on GPU
