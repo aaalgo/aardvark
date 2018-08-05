@@ -15,6 +15,10 @@ flags = tf.app.flags
 flags.DEFINE_string('net', 'resnet50_2', 'architecture')
 FLAGS = flags.FLAGS
 
+def acc (a, b): # just for shorter name
+    return keras.metrics.sparse_categorical_accuracy(a, b)
+
+
 def prep (record):
     meta, images, labels = record
     return images, labels
@@ -24,7 +28,8 @@ def build_model ():
     assert FLAGS.fix_height > 0
     model = make_model(FLAGS.net, [FLAGS.fix_height, FLAGS.fix_width, FLAGS.channels])
     model.compile(optimizer=Adam(lr=0.0001),
-                  loss='sparse_categorical_crossentropy')
+                  loss='sparse_categorical_crossentropy',
+                  metrics=[acc])
     return model
 
 def main (_):
@@ -42,7 +47,9 @@ def main (_):
     train_stream = sm.create_stream(FLAGS.db, True)
     val_stream = sm.create_stream(FLAGS.val_db, False)
     # we neet to reset val_stream
-    callbacks = [keras.callbacks.LambdaCallback(on_epoch_end=lambda epoch, logs: val_stream.reset())]
+    callbacks = [keras.callbacks.LambdaCallback(on_epoch_end=lambda epoch, logs: val_stream.reset()),
+                 keras.callbacks.ModelCheckpoint(FLAGS.model, period=FLAGS.ckpt_epochs),
+                ]
 
     hist = model.fit_generator(map(prep, train_stream),
                                     steps_per_epoch=train_stream.size(),
