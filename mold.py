@@ -29,16 +29,17 @@ class Padding:
     pass
 
 class Scaling:
-    def __init__ (self, stride, fixed = None):
+    def __init__ (self, stride, ratio=1.0, fixed = None):
         self.stride = stride
         self.fixed = None
+        self.ratio = ratio
         pass
 
     def batch_image (self, image):
         # convert image into batch, with proper stride
         h, w = image.shape[:2]
-        H = (h + self.stride - 1) // self.stride * self.stride
-        W = (w + self.stride - 1) // self.stride * self.stride
+        H = (int(round(h * self.ratio)) + self.stride - 1) // self.stride * self.stride
+        W = (int(round(w * self.ratio)) + self.stride - 1) // self.stride * self.stride
         if not self.fixed is None:
             H = self.fixed
             W = self.fixed
@@ -58,3 +59,4 @@ class Scaling:
         h, w = image.shape[:2]
         return cv2.resize(prob_batch[0], (w, h))
     pass
+

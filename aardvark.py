@@ -216,7 +216,6 @@ class SegmentationModel(Model2D):
         super().__init__()
         pass
 
-    @abstractmethod
     def inference (self, images, is_training):
         pass
 
