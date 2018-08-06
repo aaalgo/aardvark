@@ -298,6 +298,7 @@ def create_stock_slim_network (name, images, is_training, num_classes=None, glob
     network_fn = nets_factory.get_network_fn(name, num_classes=num_classes,
 		weight_decay=FLAGS.weight_decay, is_training=is_training)
     net, _ = network_fn(images - PIXEL_MEANS[:, :, :, :ch], global_pool=global_pool, output_stride=stride, scope=scope, spatial_squeeze=spatial_squeeze)
+    #net, _ = network_fn(images - PIXEL_MEANS[:, :, :, :ch], global_pool=global_pool, output_stride=stride, scope=scope)
     return net
 
 def setup_finetune (ckpt, is_trainable):

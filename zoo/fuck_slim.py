@@ -48,6 +48,7 @@ def resnet_v2_18 (inputs,
                  output_stride=None,
                  reuse=None,
                  include_root_block=True,
+                 spatial_squeeze=True,
                  scope='resnet_v2_18',
                  reduction=1):
   resnet_v2_block = resnet_v2.resnet_v2_block
@@ -65,17 +66,18 @@ def resnet_v2_18 (inputs,
       global_pool,
       output_stride,
       include_root_block=include_root_block,
+      spatial_squeeze=spatial_squeeze,
       reuse=reuse,
       scope=scope)
 
 def resnet_v2_18_cifar (inputs, num_classes=None, is_training=True, global_pool=False, output_stride=None,
-                        reuse=None, scope='resnet_v2_18_cifar'):
+                        reuse=None, scope='resnet_v2_18_cifar', spatial_squeeze=True):
     #assert global_pool
-    return resnet_v2_18(inputs, num_classes, is_training, global_pool=global_pool, output_stride=output_stride, reuse=reuse, include_root_block=False, scope=scope)
+    return resnet_v2_18(inputs, num_classes, is_training, global_pool=global_pool, output_stride=output_stride, reuse=reuse, include_root_block=False, scope=scope, spatial_squeeze=spatial_squeeze)
 
 def resnet_v2_18_slim (inputs, num_classes=None, is_training=True, global_pool=True, output_stride=None,
-                        reuse=None, scope='resnet_v2_18_slim'):
-    return resnet_v2_18(inputs, num_classes, is_training, global_pool=global_pool, output_stride=output_stride, reuse=reuse, include_root_block=True, scope=scope, reduction=2)
+                        reuse=None, scope='resnet_v2_18_slim', spatial_squeeze=True):
+    return resnet_v2_18(inputs, num_classes, is_training, global_pool=global_pool, output_stride=output_stride, reuse=reuse, include_root_block=True, scope=scope, reduction=2, spatial_squeeze=spatial_squeeze)
 
 def extend ():
     nets_factory.networks_map['resnet_v2_18'] = resnet_v2_18
