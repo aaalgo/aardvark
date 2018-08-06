@@ -4,7 +4,14 @@
 import errno
 import os
 import sys
-sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'zoo/slim'))
+import subprocess
+AARDVARK_HOME = os.path.abspath(os.path.dirname(__file__))
+sys.path.append(os.path.join(AARDVARK_HOME, 'zoo/slim'))
+picpac_so = os.path.join(AARDVARK_HOME, 'picpac.cpython-35m-x86_64-linux-gnu.so')
+if not os.path.exists(picpac_so):
+    subprocess.check_call('wget http://www.aaalgo.com/picpac/binary/picpac.cpython-35m-x86_64-linux-gnu.so -O %s' % picpac_so, shell=True)
+    pass
+
 from abc import ABC, abstractmethod
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 # C++ code, python3 setup.py build
