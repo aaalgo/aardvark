@@ -52,10 +52,10 @@ def main (_):
                 ]
 
     hist = model.fit_generator(map(prep, train_stream),
-                                    steps_per_epoch=train_stream.size(),
+                                    steps_per_epoch=train_stream.size()//FLAGS.batch,
                                     epochs=FLAGS.max_epochs,
                                     validation_data=map(prep, val_stream),
-                                    validation_steps=val_stream.size(),
+                                    validation_steps=val_stream.size()//FLAGS.batch,
                                     callbacks=callbacks)
     model.save_weights(FLAGS.model)
     pass

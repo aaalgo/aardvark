@@ -280,7 +280,7 @@ class SegmentationModel(Model2D):
 def default_argscope (is_training):
     return fuck_slim.patch_resnet_arg_scope(is_training)(weight_decay=FLAGS.weight_decay)
 
-def create_stock_slim_network (name, images, is_training, num_classes=None, global_pool=False, stride=None, scope=None):
+def create_stock_slim_network (name, images, is_training, num_classes=None, global_pool=False, stride=None, scope=None, spatial_squeeze=True):
     if scope is None:
         scope = name
     PIXEL_MEANS = tf.constant([[[[103.94, 116.78, 123.68]]]])
@@ -290,7 +290,7 @@ def create_stock_slim_network (name, images, is_training, num_classes=None, glob
 	    fuck_slim.patch(is_training)
     network_fn = nets_factory.get_network_fn(name, num_classes=num_classes,
 		weight_decay=FLAGS.weight_decay, is_training=is_training)
-    net, _ = network_fn(images - PIXEL_MEANS[:, :, :, :ch], global_pool=global_pool, output_stride=stride, scope=scope)
+    net, _ = network_fn(images - PIXEL_MEANS[:, :, :, :ch], global_pool=global_pool, output_stride=stride, scope=scope, spatial_squeeze=spatial_squeeze)
     return net
 
 def setup_finetune (ckpt, is_trainable):
