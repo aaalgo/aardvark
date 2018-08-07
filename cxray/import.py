@@ -10,13 +10,15 @@ def load_file (path):
         return f.read()
 
 def import_db (path, tasks):
-    db = picpac.Writer(path, picpac.OVERWRITE)
-    for p, l in tqdm(list(tasks)):
-        image = cv2.imread(p, -1)
-        image = cv2.resize(image, None, fx=0.5, fy=0.5)
-        image_buffer = cv2.imencode('.jpg', image)[1].tostring()
-        db.append(float(l), image_buffer)
-        pass
+    with open(path + '.list','w') as f:
+        db = picpac.Writer(path, picpac.OVERWRITE)
+        for p, l in tqdm(list(tasks)):
+            f.write('%s,%d\n' % (p, l))
+            image = cv2.imread(p, -1)
+            image = cv2.resize(image, None, fx=0.5, fy=0.5)
+            image_buffer = cv2.imencode('.jpg', image)[1].tostring()
+            db.append(float(l), image_buffer)
+            pass
 
 X = []
 Y = []

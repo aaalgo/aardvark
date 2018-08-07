@@ -48,7 +48,7 @@ def main (_):
     val_stream = sm.create_stream(FLAGS.val_db, False)
     # we neet to reset val_stream
     callbacks = [keras.callbacks.LambdaCallback(on_epoch_end=lambda epoch, logs: val_stream.reset()),
-                 keras.callbacks.ModelCheckpoint(FLAGS.model, period=FLAGS.ckpt_epochs),
+            keras.callbacks.ModelCheckpoint('%s.{epoch:03d}-{val_loss:.2f}.hdf5' % FLAGS.model, period=FLAGS.ckpt_epochs),
                 ]
 
     hist = model.fit_generator(map(prep, train_stream),
