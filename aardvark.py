@@ -304,7 +304,7 @@ class AutoEncoderModel(Model2D):
         self.images = images
 
         prediction = self.inference(images, FLAGS.channels, 1)
-        loss = self.loss(images, predictions)
+        loss = self.loss(images, prediction)
         tf.losses.add_loss(loss)
         self.metrics.append(loss)
         pass
