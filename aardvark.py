@@ -284,6 +284,51 @@ class SegmentationModel(Model2D):
                 self.labels: labels}
     pass
 
+class AutoEncoderModel(Model2D):
+
+    def __init__ (self):
+        super().__init__()
+        pass
+
+    def loss (self, images, pred):
+        pass
+
+    def inference (self, images, channels, is_training):
+        pass
+
+    def build_graph (self):
+        is_training = tf.placeholder(tf.bool, name="is_training")
+        images = tf.placeholder(tf.float32, shape=(None, None, None, FLAGS.channels), name="images")
+
+        self.is_training = is_training
+        self.images = images
+
+        prediction = self.inference(images, FLAGS.channels, 1)
+        loss = self.loss(images, predictions)
+        tf.losses.add_loss(loss)
+        self.metrics.append(loss)
+        pass
+
+    def extra_stream_config (self, is_training):
+        augments = load_augments(is_training)
+        shift = 0
+        if is_training:
+            shift = FLAGS.clip_shift
+        return {
+                "transforms": [
+                  {"type": "resize", "max_size": FLAGS.max_size, "min_size": FLAGS.min_size},
+                  ] + augments + [
+                  {"type": "clip", "shift": shift, "width": FLAGS.fix_width, "height": FLAGS.fix_height, "round": FLAGS.clip_stride},
+                  ]
+               }
+
+    def feed_dict (self, record, is_training = True):
+        # load picpac record into feed_dict
+        _, images = record
+        return {self.is_training: is_training,
+                self.images: images}
+    pass
+
 def default_argscope (is_training):
     return fuck_slim.patch_resnet_arg_scope(is_training)(weight_decay=FLAGS.weight_decay)
 
