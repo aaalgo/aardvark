@@ -186,6 +186,21 @@ def densenet(inputs,
           end_points_collection)
       return net, end_points
 
+def densenet65(inputs, num_classes=1000, data_format='NHWC', is_training=True, output_stride=None, global_pool=None, spatial_squeeze=None, reuse=None, scope='densenet65'):
+  return densenet(inputs,
+                  num_classes=num_classes, 
+                  reduction=0.5,
+                  growth_rate=32,
+                  num_filters=64,
+                  num_layers=[6,12,12],
+                  data_format=data_format,
+                  is_training=is_training,
+                  global_pool=global_pool,
+                  spatial_squeeze=spatial_squeeze,
+                  reuse=reuse,
+                  scope=scope)
+densenet65.default_image_size = 224
+
 
 def densenet89(inputs, num_classes=1000, data_format='NHWC', is_training=True, output_stride=None, global_pool=None, spatial_squeeze=None, reuse=None, scope='densenet89'):
   return densenet(inputs,
