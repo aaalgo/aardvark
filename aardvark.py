@@ -7,10 +7,6 @@ import sys
 import subprocess
 AARDVARK_HOME = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(AARDVARK_HOME, 'zoo/slim'))
-picpac_so = os.path.join(AARDVARK_HOME, 'picpac.cpython-35m-x86_64-linux-gnu.so')
-if not os.path.exists(picpac_so):
-    subprocess.check_call('wget http://www.aaalgo.com/picpac/binary/picpac.cpython-35m-x86_64-linux-gnu.so -O %s' % picpac_so, shell=True)
-    pass
 
 from abc import ABC, abstractmethod
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -22,7 +18,14 @@ from tqdm import tqdm
 import numpy as np
 import tensorflow as tf
 from nets import nets_factory, resnet_utils 
-import picpac
+try:
+    import picpac
+except:
+    picpac_so = os.path.join(AARDVARK_HOME, 'picpac.cpython-35m-x86_64-linux-gnu.so')
+    if not os.path.exists(picpac_so):
+        subprocess.check_call('wget http://www.aaalgo.com/picpac/binary/picpac.cpython-35m-x86_64-linux-gnu.so -O %s' % picpac_so, shell=True)
+        pass
+    import picpac
 from tf_utils import *
 from zoo import fuck_slim
 import __main__
