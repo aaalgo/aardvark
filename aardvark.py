@@ -30,6 +30,8 @@ from tf_utils import *
 from zoo import fuck_slim
 import __main__
 
+print("PICPAC:", picpac.__file__)
+
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
