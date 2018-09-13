@@ -491,6 +491,7 @@ def train (model):
 
             epoch += 1
 
+            is_best = False
             if (epoch % FLAGS.val_epochs == 0) and val_stream:
                 # evaluation
                 metrics = Metrics(model)
@@ -502,11 +503,15 @@ def train (model):
                     progress.set_description(metrics_txt)
                     pass
                 if metrics.avg[-1] > best:
+                    is_best = True
                     best = metrics.avg[-1]
                 msg = 'valid epoch=%d step=%d %s lr=%.4f best=%.3f' % (
                             epoch-1, step, metrics_txt, lr, best)
                 print_red(msg)
                 logging.info(msg)
+                if is_best and FLAGS.model:
+                    ckpt_path = '%s/best' % FLAGS.model
+                    saver.save(sess, ckpt_path)
             # model saving
             if (epoch % FLAGS.ckpt_epochs == 0) and FLAGS.model:
                 ckpt_path = '%s/%d' % (FLAGS.model, epoch)
