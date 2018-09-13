@@ -17,6 +17,7 @@ import simplejson as json
 from tqdm import tqdm
 import numpy as np
 import tensorflow as tf
+import lovasz_losses_tf
 from nets import nets_factory, resnet_utils 
 try:
     import picpac
@@ -37,6 +38,7 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_integer('classes', 2, 'number of classes')
 flags.DEFINE_bool('dice', None, 'use dice loss for segmentation')
+flags.DEFINE_bool('lovasz', None, 'use lovasz loss for segmentation')
 # PicPac-related parameters
 flags.DEFINE_string('db', None, 'training db')
 flags.DEFINE_string('val_db', None, 'validation db')
@@ -257,14 +259,21 @@ class SegmentationModel(Model2D):
             # setup loss
             logits1 = tf.reshape(logits, (-1, FLAGS.classes))
             labels1 = tf.reshape(labels, (-1,))
-            # cross-entropy
-            xe = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits1, labels=labels1)
-            xe = tf.reduce_mean(xe, name='xe')
             # accuracy
             acc = tf.cast(tf.nn.in_top_k(logits1, labels1, 1), tf.float32)
             acc = tf.reduce_mean(acc, name='acc')
-            tf.losses.add_loss(xe)
-            self.metrics.extend([xe, acc])
+            self.metrics.append(acc)
+            if FLAGS.lovasz:
+                lovasz = lovasz_losses_tf.lovasz_softmax(probs, tf.squeeze(labels, axis=3), per_image=True)
+                lovasz = tf.identity(lovasz, name='lov')
+                tf.losses.add_loss(lovasz)
+                self.metrics.append(lovasz)
+            else:
+                # cross-entropy
+                xe = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits1, labels=labels1)
+                xe = tf.reduce_mean(xe, name='xe')
+                tf.losses.add_loss(xe)
+                self.metrics.append(xe)
         pass
 
     def extra_stream_config (self, is_training):
@@ -276,7 +285,7 @@ class SegmentationModel(Model2D):
                 "transforms": [
                   {"type": "resize", "max_size": FLAGS.max_size, "min_size": FLAGS.min_size},
                   ] + augments + [
-                  {"type": "clip", "shift": shift, "width": FLAGS.fix_width, "height": FLAGS.fix_height, "round": FLAGS.clip_stride},
+                      {"type": "clip", "shift": shift, "width": FLAGS.fix_width, "height": FLAGS.fix_height, "round": FLAGS.clip_stride, "border_type": FLAGS.border_type},
                   {"type": "rasterize"},
                   ]
                }
