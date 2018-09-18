@@ -112,6 +112,8 @@ def densenet(inputs,
              dropout_rate=None,
              data_format='NHWC',
              is_training=True,
+             global_pool=True,
+             output_stride=None,
              spatial_squeeze=True,
              reuse=None,
              scope=None):
@@ -161,26 +163,46 @@ def densenet(inputs,
               scope='dense_block' + str(num_dense_blocks))
 
       # final blocks
-      with tf.variable_scope('final_block', [inputs]):
-        net = slim.batch_norm(net)
-        net = tf.nn.relu(net)
-        net = _global_avg_pool2d(net, scope='global_avg_pool')
+      if global_pool:
+          with tf.variable_scope('final_block', [inputs]):
+            net = slim.batch_norm(net)
+            net = tf.nn.relu(net)
+            net = _global_avg_pool2d(net, scope='global_avg_pool')
 
-      net = slim.conv2d(net, num_classes, 1,
-                        biases_initializer=tf.zeros_initializer(),
-                        scope='logits')
-      if spatial_squeeze:
-          net = tf.squeeze(net, [1, 2], name='SpatialSqueeze')
+          net = slim.conv2d(net, num_classes, 1,
+                            biases_initializer=tf.zeros_initializer(),
+                            scope='logits')
+          if spatial_squeeze:
+              net = tf.squeeze(net, [1, 2], name='SpatialSqueeze')
 
+          end_points = slim.utils.convert_collection_to_dict(
+              end_points_collection)
+
+          if num_classes is not None:
+            end_points['predictions'] = slim.softmax(net, scope='predictions')
+
+          return net, end_points
       end_points = slim.utils.convert_collection_to_dict(
           end_points_collection)
-
-      if num_classes is not None:
-        end_points['predictions'] = slim.softmax(net, scope='predictions')
-
       return net, end_points
 
-def densenet89(inputs, num_classes=1000, data_format='NHWC', is_training=True, output_stride=None, global_pool=None, reuse=None, scope='densenet89'):
+def densenet65(inputs, num_classes=1000, data_format='NHWC', is_training=True, output_stride=None, global_pool=None, spatial_squeeze=None, reuse=None, scope='densenet65'):
+  return densenet(inputs,
+                  num_classes=num_classes, 
+                  reduction=0.5,
+                  growth_rate=32,
+                  num_filters=64,
+                  num_layers=[6,12,12],
+                  data_format=data_format,
+                  is_training=is_training,
+                  global_pool=global_pool,
+                  spatial_squeeze=spatial_squeeze,
+                  reuse=reuse,
+                  scope=scope)
+densenet65.default_image_size = 224
+
+
+def densenet89(inputs, num_classes=1000, data_format='NHWC', is_training=True, output_stride=None, global_pool=None, spatial_squeeze=None, reuse=None, scope='densenet89'):
   return densenet(inputs,
                   num_classes=num_classes, 
                   reduction=0.5,
@@ -189,6 +211,8 @@ def densenet89(inputs, num_classes=1000, data_format='NHWC', is_training=True, o
                   num_layers=[6,12,12,12],
                   data_format=data_format,
                   is_training=is_training,
+                  global_pool=global_pool,
+                  spatial_squeeze=spatial_squeeze,
                   reuse=reuse,
                   scope=scope)
 densenet89.default_image_size = 224
@@ -202,6 +226,7 @@ def densenet121(inputs, num_classes=1000, data_format='NHWC', is_training=True, 
                   num_layers=[6,12,24,16],
                   data_format=data_format,
                   is_training=is_training,
+                  global_pool=global_pool,
                   reuse=reuse,
                   scope='densenet121')
 densenet121.default_image_size = 224
@@ -216,6 +241,7 @@ def densenet161(inputs, num_classes=1000, data_format='NHWC', is_training=True, 
                   num_layers=[6,12,36,24],
                   data_format=data_format,
                   is_training=is_training,
+                  global_pool=global_pool,
                   reuse=reuse,
                   scope='densenet161')
 densenet161.default_image_size = 224
@@ -230,6 +256,7 @@ def densenet169(inputs, num_classes=1000, data_format='NHWC', is_training=True, 
                   num_layers=[6,12,32,32],
                   data_format=data_format,
                   is_training=is_training,
+                  global_pool=global_pool,
                   reuse=reuse,
                   scope='densenet169')
 densenet169.default_image_size = 224

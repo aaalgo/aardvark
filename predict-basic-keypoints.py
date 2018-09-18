@@ -51,7 +51,7 @@ def save_prediction_image (path, image, kp, mask, prob):
         #if score < 5:
         #    continue
         cv2.circle(image, (x, y), 3, (0,255,0), 2)
-        cv2.putText(image, '%.4f'%score, (x,y+20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 1)
+        cv2.putText(image, '%.4f'%score, (x,y+40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 1)
     cv2.imwrite(path, np.clip(image, 0, 255))
     pass
 
