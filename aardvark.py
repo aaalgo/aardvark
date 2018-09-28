@@ -298,6 +298,40 @@ class SegmentationModel(Model2D):
                 self.labels: labels}
     pass
 
+class SegmentationModel3D (Model):
+    def __init__ (self, size=128):
+        super().__init__()
+        self.size = size
+        pass
+
+    def inference (self, images, is_training):
+        pass
+
+    def build_graph (self):
+        is_training = tf.placeholder(tf.bool, name="is_training")
+        images = tf.placeholder(tf.float32, shape=(None, self.size, self.size, self.size, FLAGS.channels), name="images")
+        labels = tf.placeholder(tf.int32, shape=(None, self.size, self.size, self.size))
+
+        self.is_training = is_training
+        self.images = images
+        self.labels = labels
+
+        logits = tf.identity(self.inference(images, FLAGS.classes, is_training), name='logits')
+        probs = tf.nn.softmax(logits, name='probs')
+
+        logits1 = tf.reshape(logits, (-1, FLAGS.classes))
+        labels1 = tf.reshape(labels, (-1,))
+        # accuracy
+        acc = tf.cast(tf.nn.in_top_k(logits1, labels1, 1), tf.float32)
+        acc = tf.reduce_mean(acc, name='acc')
+        self.metrics.append(acc)
+        xe = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits1, labels=labels1)
+        xe = tf.reduce_mean(xe, name='xe')
+        tf.losses.add_loss(xe)
+        self.metrics.append(xe)
+        pass
+    pass
+
 class AutoEncoderModel(Model2D):
 
     def __init__ (self):
