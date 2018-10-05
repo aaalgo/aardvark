@@ -30,7 +30,7 @@ def myunet (X, is_training):
                 input = tf.layers.conv2d(input, channels, filter_size, stride, padding='SAME', activation=None, kernel_regularizer=regularizer)
                 input = tf.layers.batch_normalization(input, training=is_training)
                 return tf.nn.relu(input)
-            return tf.layers.conv2d(input, channels, filter_size, stride, padding='SAME', kernel_regularizer=regularizer)
+            return tf.layers.conv2d(input, channels, filter_size, stride, padding='SAME', kernel_regularizer=regularizer, activation=tf.nn.relu)
 
         def max_pool2d (input, filter_size, stride):
             return tf.layers.max_pooling2d(input, filter_size, stride, padding='SAME')
@@ -40,7 +40,7 @@ def myunet (X, is_training):
                 input = tf.layers.conv2d_transpose(input, channels, filter_size, stride, padding='SAME', activation=None, kernel_regularizer=regularizer)
                 input = tf.layers.batch_normalization(input, training=is_training)
                 return tf.nn.relu(input)
-            return tf.layers.conv2d_transpose(input, channels, filter_size, stride, padding='SAME', kernel_regularizer=regularizer)
+            return tf.layers.conv2d_transpose(input, channels, filter_size, stride, padding='SAME', kernel_regularizer=regularizer, activation=tf.nn.relu)
 
         net = conv2d(net, 32, 3, 2)
         net = conv2d(net, 32, 3, 1)
