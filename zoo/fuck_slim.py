@@ -31,8 +31,9 @@ def patch_resnet_arg_scope (is_training):
           normalizer_fn=slim.batch_norm if use_batch_norm else None,
           normalizer_params=batch_norm_params):
         with slim.arg_scope([slim.batch_norm], **batch_norm_params):
-          with slim.arg_scope([slim.max_pool2d], padding='SAME') as arg_sc:
-            return arg_sc
+          with slim.arg_scope([slim.max_pool2d], padding='SAME'):
+            with slim.arg_scope([slim.dropout], is_training=is_training) as arg_sc:
+                return arg_sc
     return resnet_arg_scope
 
 def patch (is_training):

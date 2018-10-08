@@ -41,7 +41,7 @@ def GlobalConvBlock(inputs, n_filters=21, size=3):
     return net
 
 
-def build_gcn(inputs, num_classes, preset_model='GCN-Res101', weight_decay=1e-5, is_training=True, upscaling_method="bilinear", pretrained_dir="models"):
+def build_gcn(inputs, num_classes, preset_model='GCN-Res101', weight_decay=1e-5, is_training=None, upscaling_method="bilinear", pretrained_dir="models"):
     """
     Builds the GCN model. 
 
@@ -53,6 +53,7 @@ def build_gcn(inputs, num_classes, preset_model='GCN-Res101', weight_decay=1e-5,
     Returns:
       GCN model
     """
+    assert not is_training is None
 
     if preset_model == 'GCN-Res50':
         with slim.arg_scope(resnet_v2.resnet_arg_scope(weight_decay=weight_decay)):

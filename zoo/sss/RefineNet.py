@@ -142,7 +142,7 @@ def RefineBlock(high_inputs=None,low_inputs=None):
 
 
 
-def build_refinenet(inputs, num_classes, preset_model='RefineNet-Res101', weight_decay=1e-5, is_training=True, upscaling_method="bilinear", pretrained_dir="models"):
+def build_refinenet(inputs, num_classes, preset_model='RefineNet-Res101', weight_decay=1e-5, is_training=None, upscaling_method="bilinear", pretrained_dir="models"):
     """
     Builds the RefineNet model. 
 
@@ -154,6 +154,7 @@ def build_refinenet(inputs, num_classes, preset_model='RefineNet-Res101', weight
     Returns:
       RefineNet model
     """
+    assert not is_training is None
 
     if preset_model == 'RefineNet-Res50':
         with slim.arg_scope(resnet_v2.resnet_arg_scope(weight_decay=weight_decay)):

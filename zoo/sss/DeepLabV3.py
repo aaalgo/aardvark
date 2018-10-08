@@ -60,7 +60,7 @@ def AtrousSpatialPyramidPoolingModule(inputs, depth=256):
 
 
 
-def build_deeplabv3(inputs, num_classes, preset_model='DeepLabV3-Res50', weight_decay=1e-5, is_training=True, pretrained_dir="models"):
+def build_deeplabv3(inputs, num_classes, preset_model='DeepLabV3-Res50', weight_decay=1e-5, is_training=None, pretrained_dir="models"):
     """
     Builds the DeepLabV3 model. 
 
@@ -72,6 +72,7 @@ def build_deeplabv3(inputs, num_classes, preset_model='DeepLabV3-Res50', weight_
     Returns:
       DeepLabV3 model
     """
+    assert not is_training is None
 
     if preset_model == 'DeepLabV3-Res50':
         with slim.arg_scope(resnet_v2.resnet_arg_scope(weight_decay=weight_decay)):

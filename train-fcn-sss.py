@@ -18,11 +18,7 @@ from AdapNet import build_adaptnet
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('finetune', None, '')
 flags.DEFINE_string('net', 'MobileUNet', 'architecture')
-flags.DEFINE_integer('backbone_stride', 16, '')
-flags.DEFINE_integer('reduction', 1, '')
-flags.DEFINE_integer('multistep', 0, '')
 
 class Model (aardvark.SegmentationModel):
     def __init__ (self):
@@ -38,31 +34,41 @@ class Model (aardvark.SegmentationModel):
         network = None
         init_fn = None
         if FLAGS.net == "FC-DenseNet56" or FLAGS.net == "FC-DenseNet67" or FLAGS.net == "FC-DenseNet103":
-            network = build_fc_densenet(net_input, preset_model = FLAGS.net, num_classes=num_classes)
+            with slim.arg_scope(aardvark.default_argscope(is_training)):
+                network = build_fc_densenet(net_input, preset_model = FLAGS.net, num_classes=num_classes)
         elif FLAGS.net == "RefineNet-Res50" or FLAGS.net == "RefineNet-Res101" or FLAGS.net == "RefineNet-Res152":
+            with slim.arg_scope(aardvark.default_argscope(is_training)):
             # RefineNet requires pre-trained ResNet weights
-            network, init_fn = build_refinenet(net_input, preset_model = FLAGS.net, num_classes=num_classes)
+                network, init_fn = build_refinenet(net_input, preset_model = FLAGS.net, num_classes=num_classes, is_training=is_training)
         elif FLAGS.net == "FRRN-A" or FLAGS.net == "FRRN-B":
-            network = build_frrn(net_input, preset_model = FLAGS.net, num_classes=num_classes)
+            with slim.arg_scope(aardvark.default_argscope(is_training)):
+                network = build_frrn(net_input, preset_model = FLAGS.net, num_classes=num_classes)
         elif FLAGS.net == "Encoder-Decoder" or FLAGS.net == "Encoder-Decoder-Skip":
-            network = build_encoder_decoder(net_input, preset_model = FLAGS.net, num_classes=num_classes)
+            with slim.arg_scope(aardvark.default_argscope(is_training)):
+                network = build_encoder_decoder(net_input, preset_model = FLAGS.net, num_classes=num_classes)
         elif FLAGS.net == "MobileUNet" or FLAGS.net == "MobileUNet-Skip":
-            network = build_mobile_unet(net_input, preset_model = FLAGS.net, num_classes=num_classes)
+            with slim.arg_scope(aardvark.default_argscope(is_training)):
+                network = build_mobile_unet(net_input, preset_model = FLAGS.net, num_classes=num_classes)
         elif FLAGS.net == "PSPNet-Res50" or FLAGS.net == "PSPNet-Res101" or FLAGS.net == "PSPNet-Res152":
+            with slim.arg_scope(aardvark.default_argscope(is_training)):
             # Image size is required for PSPNet
             # PSPNet requires pre-trained ResNet weights
-            network, init_fn = build_pspnet(net_input, label_size=[args.crop_height, args.crop_width], preset_model = FLAGS.net, num_classes=num_classes)
+                network, init_fn = build_pspnet(net_input, label_size=[args.crop_height, args.crop_width], preset_model = FLAGS.net, num_classes=num_classes, is_training=is_training)
         elif FLAGS.net == "GCN-Res50" or FLAGS.net == "GCN-Res101" or FLAGS.net == "GCN-Res152":
+            with slim.arg_scope(aardvark.default_argscope(is_training)):
             # GCN requires pre-trained ResNet weights
-            network, init_fn = build_gcn(net_input, preset_model = FLAGS.net, num_classes=num_classes)
+                network, init_fn = build_gcn(net_input, preset_model = FLAGS.net, num_classes=num_classes, is_training=is_training)
         elif FLAGS.net == "DeepLabV3-Res50" or FLAGS.net == "DeepLabV3-Res101" or FLAGS.net == "DeepLabV3-Res152":
+            with slim.arg_scope(aardvark.default_argscope(is_training)):
             # DeepLabV requires pre-trained ResNet weights
-            network, init_fn = build_deeplabv3(net_input, preset_model = FLAGS.net, num_classes=num_classes)
+                network, init_fn = build_deeplabv3(net_input, preset_model = FLAGS.net, num_classes=num_classes, is_training=is_training)
         elif FLAGS.net == "DeepLabV3_plus-Res50" or FLAGS.net == "DeepLabV3_plus-Res101" or FLAGS.net == "DeepLabV3_plus-Res152":
             # DeepLabV3+ requires pre-trained ResNet weights
-            network, init_fn = build_deeplabv3_plus(net_input, preset_model = FLAGS.net, num_classes=num_classes)
+            with slim.arg_scope(aardvark.default_argscope(is_training)):
+                network, init_fn = build_deeplabv3_plus(net_input, preset_model = FLAGS.net, num_classes=num_classes, is_training=is_training)
         elif FLAGS.net == "AdapNet":
-            network = build_adaptnet(net_input, num_classes=num_classes)
+            with slim.arg_scope(aardvark.default_argscope(is_training)):
+                network = build_adaptnet(net_input, num_classes=num_classes)
         else:
             raise ValueError("Error: the model %d is not available. Try checking which models are available using the command python main.py --help")
 
