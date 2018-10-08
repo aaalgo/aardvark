@@ -253,7 +253,11 @@ class SegmentationModel(Model2D):
                 loss = lovasz_losses_tf.lovasz_hinge(logits, labels)
                 loss = tf.identity(loss, name='blov')
             else:
-                assert False, 'Not supported'
+                logits1 = tf.reshape(logits, (-1, FLAGS.classes))
+                labels1 = tf.reshape(labels, (-1,))
+                loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=logits1, labels=labels1)
+                loss = tf.reduce_mean(loss, name='xe')
+                pass
         else:   # multiple channels
             probs = tf.nn.softmax(logits, name='probs')
             prob = tf.squeeze(probs[:, :, :, 1], 3, name='prob')
