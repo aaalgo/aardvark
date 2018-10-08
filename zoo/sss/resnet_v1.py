@@ -49,13 +49,14 @@ def bottleneck(inputs, depth, depth_bottleneck, stride, rate=1,
 def resnet_v1(inputs,
               blocks,
               num_classes=None,
-              is_training=True,
+              is_training=None,
               global_pool=True,
               output_stride=None,
               include_root_block=True,
               spatial_squeeze=True,
               reuse=None,
               scope=None):
+    assert not is_training is None
     """Generator for v1 ResNet models.
 
     This function generates a family of ResNet v1 models. See the resnet_v1_*()

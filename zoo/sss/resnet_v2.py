@@ -111,7 +111,7 @@ def bottleneck(inputs, depth, depth_bottleneck, stride, rate=1,
 def resnet_v2(inputs,
               blocks,
               num_classes=None,
-              is_training=True,
+              is_training=None,
               global_pool=True,
               output_stride=None,
               include_root_block=True,
@@ -180,6 +180,7 @@ def resnet_v2(inputs,
   Raises:
     ValueError: If the target output_stride is not valid.
   """
+  assert not is_training is None
   with tf.variable_scope(scope, 'resnet_v2', [inputs], reuse=reuse) as sc:
     end_points_collection = sc.original_name_scope + '_end_points'
     with slim.arg_scope([slim.conv2d, bottleneck,

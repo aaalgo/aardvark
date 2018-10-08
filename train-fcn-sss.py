@@ -31,6 +31,8 @@ class Model (aardvark.SegmentationModel):
         pass
 
     def inference (self, net_input, num_classes, is_training):
+        if FLAGS.patch_slim:
+            fuck_slim.patch(is_training)
         network = None
         init_fn = None
         if FLAGS.net == "FC-DenseNet56" or FLAGS.net == "FC-DenseNet67" or FLAGS.net == "FC-DenseNet103":
