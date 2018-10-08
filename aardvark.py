@@ -244,23 +244,25 @@ class SegmentationModel(Model2D):
 
         logits = self.inference(images, FLAGS.classes, is_training)
         self.logits = logits
-        logits1 = tf.reshape(logits, (-1, FLAGS.classes))
+
         labels1 = tf.reshape(labels, (-1,))
 
         if FLAGS.classes == 1:
+            logits1 = tf.reshape(logits, (-1,))
             probs = tf.sigmoid(logits, name='probs')
             prob = tf.squeeze(probs, 3, name='prob')
             self.probs = probs
             if FLAGS.dice:
                 loss = tf.identity(dice_loss(tf.cast(labels1, tf.float32), prob), name='di')
             elif FLAGS.lovasz:
-                loss = lovasz_losses_tf.lovasz_hinge(logits=logits1, labels=labels1)
+                loss = lovasz_losses_tf.lovasz_hinge(logits=logits, labels=labels1)
                 loss = tf.identity(loss, name='blov')
             else:
-                loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=logits1, labels=labels1)
+                loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=logits1, labels=tf.cast(labels1, tf.float32))
                 loss = tf.reduce_mean(loss, name='bxe')
                 pass
         else:   # multiple channels
+            logits1 = tf.reshape(logits, (-1, FLAGS.classes))
             probs = tf.nn.softmax(logits, name='probs')
             self.probs = probs
             prob = tf.identity(probs[:, :, :, 1], name='prob')
