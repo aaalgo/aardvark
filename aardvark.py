@@ -242,38 +242,41 @@ class SegmentationModel(Model2D):
         self.images = images
         self.labels = labels
 
-        if FLAGS.dice:
-            assert FLAGS.classes == 2
-            logits = self.inference(images, 1, is_training)
-            probs = tf.sigmoid(logits)
+        logits = self.inference(images, FLAGS.classes, is_training)
+        if FLAGS.classes == 1:
+            probs = tf.sigmoid(logits, name='probs')
             prob = tf.squeeze(probs, 3, name='prob')
-
-            labels = tf.squeeze(labels, axis=3)  # [?,?,?,1] -> [?,?,?], picpac generates 4-D tensor
-            dice = tf.identity(dice_loss(tf.cast(labels, tf.float32), prob), name='di')
-            tf.losses.add_loss(dice)
-            self.metrics.append(dice)
-        else:
-            logits = tf.identity(self.inference(images, FLAGS.classes, is_training), name='logits')
-            probs = tf.nn.softmax(logits, name='probs')
-            prob = tf.squeeze(tf.slice(probs, [0,0,0,1], [-1,-1,-1,1]), 3, name='prob')
-            # setup loss
-            logits1 = tf.reshape(logits, (-1, FLAGS.classes))
-            labels1 = tf.reshape(labels, (-1,))
-            # accuracy
-            acc = tf.cast(tf.nn.in_top_k(logits1, labels1, 1), tf.float32)
-            acc = tf.reduce_mean(acc, name='acc')
-            self.metrics.append(acc)
-            if FLAGS.lovasz:
-                lovasz = lovasz_losses_tf.lovasz_softmax(probs, tf.squeeze(labels, axis=3), per_image=True)
-                lovasz = tf.identity(lovasz, name='lov')
-                tf.losses.add_loss(lovasz)
-                self.metrics.append(lovasz)
+            if FLAGS.dice:
+                labels = tf.squeeze(labels, axis=3)  # [?,?,?,1] -> [?,?,?], picpac generates 4-D tensor
+                loss = tf.identity(dice_loss(tf.cast(labels, tf.float32), prob), name='di')
+            elif FLAGS.lovasz:
+                loss = lovasz_losses_tf.lovasz_hinge(logits, labels)
+                loss = tf.identity(loss, name='blov')
             else:
+                assert False, 'Not supported'
+        else:   # multiple channels
+            probs = tf.nn.softmax(logits, name='probs')
+            prob = tf.squeeze(probs[:, :, :, 1], 3, name='prob')
+
+            if FLAGS.dice:
+                assert False, 'Not supported'
+            elif FLAGS.lovasz:
+                loss = lovasz_losses_tf.lovasz_softmax(probs, tf.squeeze(labels, axis=3), per_image=True)
+                loss = tf.identity(loss, name='lov')
+            else:
+                # setup loss
+                logits1 = tf.reshape(logits, (-1, FLAGS.classes))
+                labels1 = tf.reshape(labels, (-1,))
+                # accuracy
+                acc = tf.cast(tf.nn.in_top_k(logits1, labels1, 1), tf.float32)
+                acc = tf.reduce_mean(acc, name='acc')
+                self.metrics.append(acc)
                 # cross-entropy
-                xe = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits1, labels=labels1)
-                xe = tf.reduce_mean(xe, name='xe')
-                tf.losses.add_loss(xe)
-                self.metrics.append(xe)
+                loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits1, labels=labels1)
+                loss = tf.reduce_mean(loss, name='xe')
+                pass
+        tf.losses.add_loss(loss)
+        self.metrics.append(loss)
         pass
 
     def extra_stream_config (self, is_training):
