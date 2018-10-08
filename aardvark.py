@@ -243,34 +243,34 @@ class SegmentationModel(Model2D):
         self.labels = labels
 
         logits = self.inference(images, FLAGS.classes, is_training)
+        self.logits = logits
+        logits1 = tf.reshape(logits, (-1, FLAGS.classes))
+        labels1 = tf.reshape(labels, (-1,))
+
         if FLAGS.classes == 1:
             probs = tf.sigmoid(logits, name='probs')
             prob = tf.squeeze(probs, 3, name='prob')
+            self.probs = probs
             if FLAGS.dice:
-                labels = tf.squeeze(labels, axis=3)  # [?,?,?,1] -> [?,?,?], picpac generates 4-D tensor
-                loss = tf.identity(dice_loss(tf.cast(labels, tf.float32), prob), name='di')
+                loss = tf.identity(dice_loss(tf.cast(labels1, tf.float32), prob), name='di')
             elif FLAGS.lovasz:
-                loss = lovasz_losses_tf.lovasz_hinge(logits, labels)
+                loss = lovasz_losses_tf.lovasz_hinge(logits=logits1, labels=labels1)
                 loss = tf.identity(loss, name='blov')
             else:
-                logits1 = tf.reshape(logits, (-1, FLAGS.classes))
-                labels1 = tf.reshape(labels, (-1,))
                 loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=logits1, labels=labels1)
-                loss = tf.reduce_mean(loss, name='xe')
+                loss = tf.reduce_mean(loss, name='bxe')
                 pass
         else:   # multiple channels
             probs = tf.nn.softmax(logits, name='probs')
-            prob = tf.squeeze(probs[:, :, :, 1], 3, name='prob')
+            self.probs = probs
+            prob = tf.identity(probs[:, :, :, 1], name='prob')
 
             if FLAGS.dice:
                 assert False, 'Not supported'
             elif FLAGS.lovasz:
-                loss = lovasz_losses_tf.lovasz_softmax(probs, tf.squeeze(labels, axis=3), per_image=True)
+                loss = lovasz_losses_tf.lovasz_softmax(probs, labels1, per_image=True)
                 loss = tf.identity(loss, name='lov')
             else:
-                # setup loss
-                logits1 = tf.reshape(logits, (-1, FLAGS.classes))
-                labels1 = tf.reshape(labels, (-1,))
                 # accuracy
                 acc = tf.cast(tf.nn.in_top_k(logits1, labels1, 1), tf.float32)
                 acc = tf.reduce_mean(acc, name='acc')
