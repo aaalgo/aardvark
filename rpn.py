@@ -132,7 +132,7 @@ class BasicRPN (aardvark.Model2D):
             pass
 
         params = self.rpn_parameters(self.rpn_params_size() * self.n_priors, FLAGS.anchor_stride)
-        tf.params(params, name='rpn_all_params')
+        params = tf.identity(params, name='rpn_all_params')
         anchor_layer_shape = tf.shape(params)
         params = tf.reshape(params, (-1, self.n_priors, self.rpn_params_size()))     # ? * 4
         gt_params = tf.reshape(self.gt_params, (-1, self.n_priors, self.rpn_params_size()))

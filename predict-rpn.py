@@ -21,7 +21,7 @@ class Model:
                                'nms_th:0': nms_th,
                                'is_training:0': is_training,
                                },
-                    return_elements=['rpn_probs:0', 'rpn_boxes:0', 'rpn_index:0'])
+                    return_elements=['rpn_probs:0', 'rpn_shapes:0', 'rpn_index:0'])
         self.saver = tf.train.Saver(saver_def=mg.saver_def, name=name)
         self.loader = lambda sess: self.saver.restore(sess, path)
         pass
