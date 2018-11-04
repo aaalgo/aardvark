@@ -12,6 +12,7 @@ from abc import ABC, abstractmethod
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 # C++ code, python3 setup.py build
 import time, datetime
+from multiprocessing import Process, Queue
 import logging
 import simplejson as json
 from tqdm import tqdm
@@ -81,6 +82,7 @@ flags.DEFINE_float('weight_decay', 0.00004, '')
 flags.DEFINE_boolean('patch_slim', False, '')
 
 flags.DEFINE_boolean('compact', False, 'compact progress bar')
+flags.DEFINE_boolean('multiprocess', False, '')
 
 
 def load_augments (is_training):
@@ -446,6 +448,26 @@ class Metrics:  # display metrics
         self.avg = self.sum / self.cnt
         return ' '.join(['%s=%.3f' % (a, b) for a, b in zip(self.metric_names, list(self.avg))])
 
+class AsyncLoad:
+    def __init__ (self, stream):
+
+        def producer (queue, stre):
+            while True:
+                queue.put(stre.next())
+            pass
+
+        self.queue = Queue()
+        self.worker = Process(target=producer, args=(self.queue, stream,))
+        self.worker.daemon = True
+        self.worker.start()        # Launch reader_proc() as a separate python process
+        pass
+
+    def next (self):
+        return self.queue.get()
+    pass
+
+
+
 def train (model):
 
     bname = os.path.splitext(os.path.basename(__main__.__file__))[0]
@@ -486,6 +508,10 @@ def train (model):
 
     stream = model.create_stream(FLAGS.db, True)
     # load validation db
+    if FLAGS.multiprocess:
+        stream = AsyncLoad(stream)
+        pass
+
     val_stream = None
     if FLAGS.val_db:
         val_stream = model.create_stream(FLAGS.val_db, False)
@@ -562,7 +588,6 @@ def train (model):
                 saver.save(sess, ckpt_path)
                 print('saved to %s.' % ckpt_path)
             pass
-        pass
     pass
 
 def print_red (txt):
