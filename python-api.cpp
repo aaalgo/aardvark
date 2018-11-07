@@ -50,8 +50,9 @@ namespace {
         float iou_th;
         int max;
         float min_size;
+        bool best_only;
     public:
-        GTMatcher (float th_, int max_, float min_size_): iou_th(th_), max(max_), min_size(min_size_) {
+        GTMatcher (float th_, int max_, float min_size_, bool best_only_): iou_th(th_), max(max_), min_size(min_size_), best_only(best_only_) {
         }
 
         list apply (np::ndarray boxes,
@@ -72,6 +73,7 @@ namespace {
             vector<bool> used(nb, false);
 
             int32_t const *box_ind = (int32_t const *)(box_ind_.get_data());
+            int hit = 0;
             for (int i = 0; i < ng; ++i) {
                 // i-th gt box
                 float const *gt = (float const *)(gt_boxes.get_data() + gt_boxes.strides(0) * i);
@@ -79,6 +81,7 @@ namespace {
                 gt = gt + 3;    // the box parameters
                 float iou = iou_th;
                 int best = -1;
+                int this_hit = 0;
                 for (int j = 0; j < nb; ++j) {
                     if (box_ind[j] != ind) continue; // not the same image
                     if (used[j]) continue;
@@ -87,8 +90,14 @@ namespace {
                     if (b[3] - b[1] < min_size) continue;
                     float s = iou_score(gt, b);
                     if (s > iou) {
-                        iou = s;
-                        best = j;
+                        if (best_only) {
+                            iou = s;
+                            best = j;
+                        }
+                        else {
+                            match.emplace_back(j, i);
+                            ++this_hit;
+                        }
                     }
                 }
                 if (best >= 0) {
@@ -100,12 +109,21 @@ namespace {
                     */
                     match.emplace_back(best, i);
                     used[best] = true;
+                    ++this_hit;
+                }
+                if (this_hit > 0) {
+                    ++hit;
                 }
             }
 
             list r;
             np::ndarray cnt = np::zeros(make_tuple(), np::dtype::get_builtin<float>());
-            *(float *)cnt.get_data() = match.size();
+            if (best_only) {
+                *(float *)cnt.get_data() = match.size();
+            }
+            else {
+                *(float *)cnt.get_data() = hit;
+            }
 
             if (match.size() > max) {
                 std::random_shuffle(match.begin(), match.end());
@@ -115,7 +133,6 @@ namespace {
             np::ndarray idx1 = np::zeros(make_tuple(match.size()), np::dtype::get_builtin<int32_t>());
             np::ndarray idx2 = np::zeros(make_tuple(match.size()), np::dtype::get_builtin<int32_t>());
             
-            //np::ndarray cnt = np::zeros(mask_tuple(
 
             int32_t *p1 = (int32_t *)idx1.get_data();
             int32_t *p2 = (int32_t *)idx2.get_data();
@@ -235,7 +252,7 @@ namespace {
 BOOST_PYTHON_MODULE(cpp)
 {
     np::initialize();
-    class_<GTMatcher>("GTMatcher", init<float, int, float>())
+    class_<GTMatcher>("GTMatcher", init<float, int, float, bool>())
         .def("apply", &GTMatcher::apply)
     ;
     class_<MaskExtractor>("MaskExtractor", init<int, int>())

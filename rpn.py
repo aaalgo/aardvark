@@ -17,12 +17,13 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string('priors', 'priors', '')
 flags.DEFINE_integer('anchor_stride', 4, '')
+flags.DEFINE_integer('pooling_size', 7, '')
 
 flags.DEFINE_float('anchor_th', 0.5, '')
 flags.DEFINE_integer('nms_max', 128, '')
 flags.DEFINE_float('nms_th', 0.5, '')
 flags.DEFINE_float('match_th', 0.5, '')
-flags.DEFINE_integer('max_masks', 128, '')
+flags.DEFINE_integer('max_masks', 64, '')
 
 flags.DEFINE_float('lower_th', 0.1, '')
 flags.DEFINE_float('upper_th', 0.5, '')
@@ -30,6 +31,7 @@ flags.DEFINE_float('upper_th', 0.5, '')
 # optimizer settings
 flags.DEFINE_float('rpn_act_weight', 1.0, '')
 flags.DEFINE_float('rpn_params_weight', 1.0, '')
+flags.DEFINE_float('frcnn_params_weight', 1.0, '')
 
 dump_cnt = 0
 
@@ -171,8 +173,12 @@ class BasicRPN (aardvark.Model2D):
             shapes = tf.boolean_mask(shapes, sel)
             index = tf.boolean_mask(index, sel)
 
+        self.rpn_probs_all = prob
+        self.rpn_shapes_all = shapes
+        self.rpn_index_all = index
+
         #self.metrics.append(tf.identity(tf.cast(tf.shape(boxes)[0], dtype=tf.float32), name='o'))
-        sel = self.non_max_supression(shapes, index, prob)
+        sel = self.rpn_non_max_supression(shapes, index, prob)
         if sel is None:
             self.rpn_probs = tf.identify(prob, name='rpn_probs')
             self.rpn_shapes = tf.identify(shapes, name='rpn_shapes')
@@ -182,7 +188,6 @@ class BasicRPN (aardvark.Model2D):
             self.rpn_shapes = tf.gather(shapes, sel, name='rpn_shapes')
             self.rpn_index = tf.gather(index, sel, name='rpn_index')
             pass
-        
         # sel is a list of indices
         pass
 
@@ -253,7 +258,7 @@ class RPN (BasicRPN):
         boxes = tf.stack([x1, y1, x2, y2], axis=1)
         return boxes, offset
 
-    def non_max_supression (self, boxes, index, prob):
+    def rpn_non_max_supression (self, boxes, index, prob):
         return tf.image.non_max_suppression(shift_boxes(boxes, index), prob, self.nms_max, iou_threshold=self.nms_th)
 
     def build_graph (self):
@@ -261,6 +266,7 @@ class RPN (BasicRPN):
         self.images = tf.placeholder(tf.float32, shape=(None, None, None, FLAGS.channels), name="images")
         self.nms_max = tf.constant(FLAGS.nms_max, dtype=tf.int32, name="nms_max")
         self.nms_th = tf.constant(FLAGS.nms_th, dtype=tf.float32, name="nms_th")
+        self.gt_boxes = tf.placeholder(tf.float32, shape=(None, 7)) # not really used in RPN, but used in Faster-RCNN
 
         self.build_rpn(self.images, True)
         pass
@@ -281,14 +287,15 @@ class RPN (BasicRPN):
                       #{"type": "clip", "round": FLAGS.backbone_stride},
                       {"type": "clip", "shift": shift, "width": FLAGS.fix_width, "height": FLAGS.fix_height, "round": FLAGS.clip_stride},
                       {"type": "anchors.dense.box", 'downsize': FLAGS.anchor_stride, 'lower_th': FLAGS.lower_th, 'upper_th': FLAGS.upper_th, 'weighted': False, 'priors': self.priors, 'params_default': 1.0},
-                      {"type": "rasterize"},
+                      {"type": "box_feature"},
+                      {"type": "drop"},
                       ]
                  }
 
     def feed_dict (self, record, is_training = True):
         global dump_cnt
         _, images, _, gt_anchors, gt_anchors_weight, \
-                      gt_params, gt_params_weight = record
+                      gt_params, gt_params_weight, gt_boxes = record
         assert np.all(gt_anchors < 2)
         #gt_boxes = np.reshape(gt_boxes, [-1, 7])    # make sure shape is correct
         if dump_cnt < 20:
@@ -301,9 +308,88 @@ class RPN (BasicRPN):
                     cv2.imwrite('picpac_dump2/%d_d_%d_weight.png' % (dump_cnt, j), gt_params_weight[i,:,:,j]*255)
                 dump_cnt += 1
 
+        if len(gt_boxes.shape) > 1:
+            assert np.all(gt_boxes[:, 1] < FLAGS.classes)
+            assert np.all(gt_boxes[:, 1] > 0)
+
         return {self.is_training: is_training,
                 self.images: images,
                 self.gt_anchors: gt_anchors,
                 self.gt_anchors_weight: gt_anchors_weight,
                 self.gt_params: gt_params,
-                self.gt_params_weight: gt_params_weight}
+                self.gt_params_weight: gt_params_weight,
+                self.gt_boxes: gt_boxes}
+
+class FRCNN (RPN):
+
+    def __init__ (self, min_size=1):
+        super().__init__()
+        self.gt_matcher = cpp.GTMatcher(FLAGS.match_th, FLAGS.max_masks, min_size, False)
+        pass
+
+    def refine_params (self, net, scope='frcnn_refine'):
+        with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
+            net = slim.conv2d(net, 256, 3, 1, scope='conv1')
+            net = slim.conv2d(net, 256, 3, 1, scope='conv2')
+            net = slim.max_pool2d(net, [2,2], padding='SAME')
+            net = slim.conv2d(net, 512, 3, 1, scope='conv3')
+            net = slim.conv2d(net, 512, 3, 1, scope='conv4')
+            #net = slim.conv2d(patches, 64, 3, 1)
+            net = tf.reduce_mean(net, [1, 2], keep_dims=False)
+            return slim.fully_connected(net, 4, activation_fn=None, scope='fc')
+
+    def refine_box (self, boxes, index, gt_boxes = None):
+        shape = tf.shape(self.images)
+        max_X = tf.cast(shape[2]-1, tf.float32)
+        max_Y = tf.cast(shape[1]-1, tf.float32)
+        x1,y1,x2,y2 = [tf.squeeze(x, axis=1) for x in tf.split(boxes, [1,1,1,1], 1)]
+        w = x2 - x1 + 1
+        h = y2 - y1 + 1
+
+        gt_params = None
+        if not gt_boxes is None:
+            gx1,gy1,gx2,gy2 = [tf.squeeze(x, axis=1) for x in tf.split(gt_boxes, [1,1,1,1], 1)]
+            gx1 = (gx1 - x1) / w
+            gy1 = (gy1 - y1) / h
+            gx2 = (gx2 - x2) / w
+            gy2 = (gy2 - y2) / h
+            gt_params = tf.stack([gx1, gy1, gx2, gy2], axis=1)
+
+        nboxes = tf.stack([y1/max_Y, x1/max_X, y2/max_Y, x2/max_X], axis=1)
+
+        mask_size = FLAGS.pooling_size * 2
+        net = tf.image.crop_and_resize(self.backbone, nboxes, index, [mask_size, mask_size])
+        params = self.refine_params(net)
+
+        dx1, dy1, dx2, dy2 = [tf.squeeze(x, axis=1) for x in tf.split(params, [1,1,1,1], 1)]
+
+
+        x1 += w * dx1
+        x2 += w * dx2
+        y1 += h * dy1
+        y2 += h * dy2
+        return tf.stack([x1, y1, x2, y2], axis=1), params, gt_params
+
+    def build_graph (self):
+        super().build_graph()
+
+        n_hits, rpn_hits, gt_hits = tf.py_func(self.gt_matcher.apply, [self.rpn_shapes_all, self.rpn_index_all, self.gt_boxes], [tf.float32, tf.int32, tf.int32])
+        recall = n_hits / (tf.cast(tf.shape(self.gt_boxes)[0], tf.float32) + 0.0001);
+        self.metrics.append(tf.identity(recall, name='r'))
+
+        hit_boxes = tf.gather(self.rpn_shapes_all, rpn_hits)    # x1, y1, x2, y2
+        hit_index = tf.gather(self.rpn_index_all, rpn_hits)
+        hit_gt = tf.gather(self.gt_boxes, gt_hits)
+
+        _, params, gt_params = self.refine_box(hit_boxes, hit_index, tf.slice(hit_gt, [0, 3], [-1, 4]))
+
+        pl = tf.losses.huber_loss(params, gt_params, reduction=tf.losses.Reduction.NONE, loss_collection=None)
+        pl = tf.reduce_sum(pl) / (tf.cast(tf.shape(pl)[0], tf.float32) * 4 + 0.0001)
+        pl = tf.check_numerics(pl, 'p2', name='p2') # params-loss
+        tf.losses.add_loss(pl*FLAGS.frcnn_params_weight)
+        self.metrics.append(pl)
+
+        boxes, _, _ = self.refine_box(self.rpn_shapes, self.rpn_index, None)
+        self.boxes = tf.identity(boxes, name='boxes')
+        pass
+
