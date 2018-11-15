@@ -29,9 +29,11 @@ flags.DEFINE_float('lower_th', 0.1, '')
 flags.DEFINE_float('upper_th', 0.5, '')
 
 # optimizer settings
-flags.DEFINE_float('rpn_act_weight', 1.0, '')
+flags.DEFINE_float('rpn_logits_weight', 1.0, '')
 flags.DEFINE_float('rpn_params_weight', 1.0, '')
 flags.DEFINE_float('frcnn_params_weight', 1.0, '')
+flags.DEFINE_boolean('frcnn_only', False, '')
+flags.DEFINE_boolean('rpn_only', False, '')
 
 dump_cnt = 0
 
@@ -146,7 +148,7 @@ class BasicRPN (aardvark.Model2D):
         tf.identity(prob, name='rpn_all_probs')
 
         if add_loss:
-            tf.losses.add_loss(activation_loss * FLAGS.rpn_act_weight)
+            tf.losses.add_loss(activation_loss * FLAGS.rpn_logits_weight)
             self.metrics.append(activation_loss)
             tf.losses.add_loss(pl * FLAGS.rpn_params_weight)
             self.metrics.append(pl)
@@ -261,14 +263,14 @@ class RPN (BasicRPN):
     def rpn_non_max_supression (self, boxes, index, prob):
         return tf.image.non_max_suppression(shift_boxes(boxes, index), prob, self.nms_max, iou_threshold=self.nms_th)
 
-    def build_graph (self):
+    def build_graph (self, add_loss=True):
         self.is_training = tf.placeholder(tf.bool, name="is_training")
         self.images = tf.placeholder(tf.float32, shape=(None, None, None, FLAGS.channels), name="images")
         self.nms_max = tf.constant(FLAGS.nms_max, dtype=tf.int32, name="nms_max")
         self.nms_th = tf.constant(FLAGS.nms_th, dtype=tf.float32, name="nms_th")
         self.gt_boxes = tf.placeholder(tf.float32, shape=(None, 7)) # not really used in RPN, but used in Faster-RCNN
 
-        self.build_rpn(self.images, True)
+        self.build_rpn(self.images, add_loss)
         pass
 
     def extra_stream_config (self, is_training):
@@ -329,11 +331,11 @@ class FRCNN (RPN):
 
     def refine_params (self, net, scope='frcnn_refine'):
         with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
-            net = slim.conv2d(net, 256, 3, 1, scope='conv1')
-            net = slim.conv2d(net, 256, 3, 1, scope='conv2')
+            net = slim.conv2d(net, 128, 3, 1, scope='conv1')
+            net = slim.conv2d(net, 128, 3, 1, scope='conv2')
             net = slim.max_pool2d(net, [2,2], padding='SAME')
-            net = slim.conv2d(net, 512, 3, 1, scope='conv3')
-            net = slim.conv2d(net, 512, 3, 1, scope='conv4')
+            net = slim.conv2d(net, 256, 3, 1, scope='conv3')
+            net = slim.conv2d(net, 256, 3, 1, scope='conv4')
             #net = slim.conv2d(patches, 64, 3, 1)
             net = tf.reduce_mean(net, [1, 2], keep_dims=False)
             return slim.fully_connected(net, 4, activation_fn=None, scope='fc')
@@ -371,7 +373,7 @@ class FRCNN (RPN):
         return tf.stack([x1, y1, x2, y2], axis=1), params, gt_params
 
     def build_graph (self):
-        super().build_graph()
+        super().build_graph(add_loss=not FLAGS.frcnn_only)
 
         n_hits, rpn_hits, gt_hits = tf.py_func(self.gt_matcher.apply, [self.rpn_shapes_all, self.rpn_index_all, self.gt_boxes], [tf.float32, tf.int32, tf.int32])
         recall = n_hits / (tf.cast(tf.shape(self.gt_boxes)[0], tf.float32) + 0.0001);
@@ -386,8 +388,9 @@ class FRCNN (RPN):
         pl = tf.losses.huber_loss(params, gt_params, reduction=tf.losses.Reduction.NONE, loss_collection=None)
         pl = tf.reduce_sum(pl) / (tf.cast(tf.shape(pl)[0], tf.float32) * 4 + 0.0001)
         pl = tf.check_numerics(pl, 'p2', name='p2') # params-loss
-        tf.losses.add_loss(pl*FLAGS.frcnn_params_weight)
-        self.metrics.append(pl)
+        if not FLAGS.rpn_only:
+            tf.losses.add_loss(pl*FLAGS.frcnn_params_weight)
+            self.metrics.append(pl)
 
         boxes, _, _ = self.refine_box(self.rpn_shapes, self.rpn_index, None)
         self.boxes = tf.identity(boxes, name='boxes')

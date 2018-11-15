@@ -42,6 +42,34 @@ def patch (is_training):
     for key in keys:
         nets_factory.arg_scopes_map[key] = asc
 
+def resnet_v2_14_nmist (inputs,
+                 num_classes=None,
+                 is_training=True,
+                 global_pool=True,
+                 output_stride=None,
+                 reuse=None,
+                 include_root_block=False,
+                 spatial_squeeze=True,
+                 scope='resnet_v2_14_nist',
+                 reduction=2):
+  resnet_v2_block = resnet_v2.resnet_v2_block
+  blocks = [
+      resnet_v2_block('block1', base_depth=64//reduction, num_units=2, stride=2),
+      resnet_v2_block('block2', base_depth=128//reduction, num_units=2, stride=2),
+      resnet_v2_block('block3', base_depth=256//reduction, num_units=2, stride=1),
+  ]
+  return resnet_v2.resnet_v2(
+      inputs,
+      blocks,
+      num_classes,
+      is_training,
+      global_pool,
+      output_stride,
+      include_root_block=include_root_block,
+      spatial_squeeze=spatial_squeeze,
+      reuse=reuse,
+      scope=scope)
+
 def resnet_v2_18 (inputs,
                  num_classes=None,
                  is_training=True,
@@ -80,12 +108,38 @@ def resnet_v2_18_slim (inputs, num_classes=None, is_training=True, global_pool=T
                         reuse=None, scope='resnet_v2_18_slim', spatial_squeeze=True):
     return resnet_v2_18(inputs, num_classes, is_training, global_pool=global_pool, output_stride=output_stride, reuse=reuse, include_root_block=True, scope=scope, reduction=2, spatial_squeeze=spatial_squeeze)
 
+def resnet_v2_50_slim(inputs,
+                 num_classes=None,
+                 is_training=True,
+                 global_pool=True,
+                 output_stride=None,
+                 spatial_squeeze=True,
+                 reuse=None,
+                 scope='resnet_v2_50'):
+  """ResNet-50 model of [1]. See resnet_v2() for arg and return description."""
+  resnet_v2_block = resnet_v2.resnet_v2_block
+  reduction=2
+  blocks = [
+      resnet_v2_block('block1', base_depth=64//reduction, num_units=3, stride=2),
+      resnet_v2_block('block2', base_depth=128//reduction, num_units=4, stride=2),
+      resnet_v2_block('block3', base_depth=256//reduction, num_units=6, stride=2),
+      resnet_v2_block('block4', base_depth=512//reduction, num_units=3, stride=1),
+  ]
+  return resnet_v2.resnet_v2(inputs, blocks, num_classes, is_training=is_training,
+                   global_pool=global_pool, output_stride=output_stride,
+                   include_root_block=True, spatial_squeeze=spatial_squeeze,
+                   reuse=reuse, scope=scope)
+
 def extend ():
+    nets_factory.networks_map['resnet_v2_14_nmist'] = resnet_v2_14_nmist
     nets_factory.networks_map['resnet_v2_18'] = resnet_v2_18
     nets_factory.networks_map['resnet_v2_18_cifar'] = resnet_v2_18_cifar
     nets_factory.networks_map['resnet_v2_18_slim'] = resnet_v2_18_slim
+    nets_factory.networks_map['resnet_v2_50_slim'] = resnet_v2_50_slim
+    nets_factory.arg_scopes_map['resnet_v2_14_nmist'] = resnet_v2.resnet_arg_scope
     nets_factory.arg_scopes_map['resnet_v2_18'] = resnet_v2.resnet_arg_scope
     nets_factory.arg_scopes_map['resnet_v2_18_cifar'] = resnet_v2.resnet_arg_scope
     nets_factory.arg_scopes_map['resnet_v2_18_slim'] = resnet_v2.resnet_arg_scope
+    nets_factory.arg_scopes_map['resnet_v2_50_slim'] = resnet_v2.resnet_arg_scope
     pass
 
