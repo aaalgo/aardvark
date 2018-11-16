@@ -74,7 +74,7 @@ class BasicRPN (aardvark.Model2D):
         pass
 
     @abstractmethod
-    def build_backbone (self, image):
+    def rpn_backbone (self, image):
         pass
 
     @abstractmethod
@@ -115,7 +115,7 @@ class BasicRPN (aardvark.Model2D):
 
         priors2 = tf.tile(priors,[1,1,2])
 
-        self.build_backbone(images)
+        self.rpn_backbone(images)
 
         if FLAGS.dice:
             anchors = self.rpn_activation(self.n_priors, FLAGS.anchor_stride)

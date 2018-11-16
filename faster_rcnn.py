@@ -221,7 +221,7 @@ class FasterRCNN (aardvark.Model2D):
                 self.gt_boxes: gt_boxes}
 
     @abstractmethod
-    def build_backbone (self, images):
+    def rpn_backbone (self, images):
         pass
 
     @abstractmethod
@@ -258,7 +258,7 @@ class FasterRCNN (aardvark.Model2D):
 
         priors2 = tf.tile(priors,[1,1,2])
 
-        self.build_backbone(self.images)
+        self.rpn_backbone(self.images)
 
         if FLAGS.dice:
             anchors = self.rpn_activation(self.n_priors, FLAGS.anchor_stride)

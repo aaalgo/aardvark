@@ -26,7 +26,7 @@ class Model (FasterRCNN):
         super().__init__(FLAGS.backbone_stride)
         pass
 
-    def build_backbone (self, images):
+    def rpn_backbone (self, images):
         self.backbone = aardvark.create_stock_slim_network(FLAGS.backbone, images, self.is_training, global_pool=False, stride=FLAGS.backbone_stride, scope='bb1')
         self.backbone_stride = FLAGS.backbone_stride
         pass
