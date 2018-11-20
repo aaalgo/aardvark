@@ -31,13 +31,13 @@ class Model (RPN):
         self.backbone_stride = FLAGS.backbone_stride
         pass
 
-    def rpn_activation (self, channels, stride):
+    def rpn_logits (self, channels, stride):
         upscale = self.backbone_stride // stride
         with slim.arg_scope(aardvark.default_argscope(self.is_training)):
             return slim.conv2d_transpose(self.backbone, channels, 2*upscale, upscale, activation_fn=None)
         pass
 
-    def rpn_parameters (self, channels, stride):
+    def rpn_params (self, channels, stride):
         upscale = self.backbone_stride // stride
         with slim.arg_scope(aardvark.default_argscope(self.is_training)):
             return slim.conv2d_transpose(self.backbone, channels, 2*upscale, upscale, activation_fn=None)

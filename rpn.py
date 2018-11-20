@@ -16,7 +16,7 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('priors', 'priors', '')
-flags.DEFINE_integer('anchor_stride', 4, '')
+flags.DEFINE_integer('rpn_stride', 4, '')
 flags.DEFINE_integer('pooling_size', 7, '')
 
 flags.DEFINE_float('anchor_th', 0.5, '')
@@ -30,6 +30,7 @@ flags.DEFINE_float('upper_th', 0.5, '')
 
 # optimizer settings
 flags.DEFINE_float('rpn_logits_weight', 1.0, '')
+flags.DEFINE_float('rpn_positive_extra', 0, '')
 flags.DEFINE_float('rpn_params_weight', 1.0, '')
 flags.DEFINE_float('frcnn_params_weight', 1.0, '')
 flags.DEFINE_boolean('frcnn_only', False, '')
@@ -37,32 +38,73 @@ flags.DEFINE_boolean('rpn_only', False, '')
 
 dump_cnt = 0
 
+def prior_file_version (path):
+    with open(path, 'r') as f:
+        for l in f:
+            if 'priors' in l:
+                return 1
+            return 0
+        pass
+    pass
+
+def load_priors_v0 (path):
+    priors = []
+    with open(FLAGS.priors, 'r') as f:
+        for l in f:
+            if l[0] == '#':
+                continue
+            s, r = l.strip().split(' ')
+            s, r = float(s), float(r)
+            # w * h = s * s
+            # w / h = r
+            w = math.sqrt(s * s * r)
+            h = math.sqrt(s * s / r)
+            priors.append([w, h])
+            pass
+        pass
+    return priors
+
+def load_priors_v1 (path):
+    priors = []
+    with open(FLAGS.priors, 'r') as f:
+        l = next(f)
+        txt, n, dim = l.strip().split(' ')
+        assert txt == 'priors'
+        n = int(n)
+        dim = int(dim)
+        for l in f:
+            if l[0] == '#':
+                continue
+            prior = [float(x) for x in l.strip().split(' ')]
+            assert len(prior) == dim
+            priors.append(prior)
+            pass
+        pass
+    assert len(priors) == n
+    return priors
+
+def load_priors (path):
+    ver = prior_file_version(path)
+    if ver == 0:
+        return load_priors_v0(path)
+    elif ver == 1:
+        return load_priors_v1(path)
+    assert False
+
 class BasicRPN (aardvark.Model2D):
     # RPN for generic shape
     def __init__ (self, min_size=1):
         super().__init__()
         #self.gt_matcher = cpp.GTMatcher(FLAGS.match_th, FLAGS.max_masks, min_size)
-        self.priors = []
+        priors = []
         if os.path.exists(FLAGS.priors):
-            with open(FLAGS.priors, 'r') as f:
-                for l in f:
-                    if l[0] == '#':
-                        continue
-                    s, r = l.strip().split(' ')
-                    s, r = float(s), float(r)
-                    # w * h = s * s
-                    # w / h = r
-                    w = math.sqrt(s * s * r)
-                    h = math.sqrt(s * s / r)
-                    self.priors.append([w, h])
-                    pass
-                pass
-            pass
-        aardvark.print_red("PRIORS %s" % str(self.priors))
+            priors = load_priors(FLAGS.priors)
+        if len(priors) == 0:
+            priors.append([1,1])
+        aardvark.print_red("PRIORS %s" % str(priors))
         # TODO: need a better way to generalize this to multiple priors and 0 priors
-        self.n_priors = len(self.priors)
-        if self.n_priors == 0:
-            self.n_priors = 1
+        self.n_priors = len(priors)
+        self.priors = priors
         pass
 
     @abstractmethod
@@ -78,11 +120,11 @@ class BasicRPN (aardvark.Model2D):
         pass
 
     @abstractmethod
-    def rpn_activation (self, channels, stride):
+    def rpn_logits (self, channels, strides):
         pass
 
     @abstractmethod
-    def rpn_parameters (self, channels, stride):
+    def rpn_params (self, channels, strides):
         pass
 
     def rpn_generate_shapes (self, shape, anchor_params, priors, n_priors):
@@ -101,41 +143,41 @@ class BasicRPN (aardvark.Model2D):
 
         # the reset are for training only
         # whether a location should be activated
-        self.gt_anchors = tf.placeholder(tf.float32, shape=(None, None, None, self.n_priors))
-        self.gt_anchors_weight = tf.placeholder(tf.float32, shape=(None, None, None, self.n_priors))
+        self.gt_anchors = tf.placeholder(tf.float32, shape=(None, None, None, self.n_priors), name='gt_anchors')
+        self.gt_anchors_weight = tf.placeholder(tf.float32, shape=(None, None, None, self.n_priors), name='gt_anchors_weight')
         # parameter of that location
-        self.gt_params = tf.placeholder(tf.float32, shape=(None, None, None, self.n_priors * self.rpn_params_size()))
-        self.gt_params_weight = tf.placeholder(tf.float32, shape=(None, None, None, self.n_priors))
+        self.gt_params = tf.placeholder(tf.float32, shape=(None, None, None, self.n_priors * self.rpn_params_size()), name='gt_params')
+        self.gt_params_weight = tf.placeholder(tf.float32, shape=(None, None, None, self.n_priors), name='gt_params_weight')
         #self.gt_boxes = tf.placeholder(tf.float32, shape=(None, 7))
-        if len(self.priors) > 0:
-            priors = tf.expand_dims(tf.constant(self.priors, dtype=tf.float32), axis=0)
-        else:
-            priors = tf.constant([[[1,1]]], dtype=tf.float32)
+        priors = tf.expand_dims(tf.constant(self.priors, dtype=tf.float32), axis=0)
         # 1 * priors * 2
 
         priors2 = tf.tile(priors,[1,1,2])
 
         self.rpn_backbone(images)
 
+        logits = self.rpn_logits(self.n_priors, FLAGS.rpn_stride)
+        probs = tf.sigmoid(logits)
+        self.probs = probs
+        probs = tf.reshape(probs, (-1,))
+
         if FLAGS.dice:
-            anchors = self.rpn_activation(self.n_priors, FLAGS.anchor_stride)
-            anchors = tf.sigmoid(anchors)
-            dice, dice_chs = weighted_dice_loss_by_channel(self.gt_anchors, anchors, self.gt_anchors_weight, self.n_priors)
+            dice, dice_chs = weighted_dice_loss_by_channel(self.gt_anchors, probs, self.gt_anchors_weight, self.n_priors)
             activation_loss = tf.identity(dice, name='di')
-            prob = tf.reshape(anchors, (-1,))
         else:
-            logits = self.rpn_activation(self.n_priors * 2, FLAGS.anchor_stride)
-            logits2 = tf.reshape(logits, (-1, 2))   # ? * 2
-            gt_anchors = tf.reshape(self.gt_anchors, (-1, ))
+            logits1 = tf.reshape(logits, (-1,))   # ? * 2
+            gt_anchors = tf.reshape(self.gt_anchors, (-1,))
             gt_anchors_weight = tf.reshape(self.gt_anchors_weight, (-1,))
-            xe = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits2, labels=tf.cast(gt_anchors, dtype=tf.int32))
+            xe = tf.nn.sigmoid_cross_entropy_with_logits(logits=logits1, labels=gt_anchors)
+            if FLAGS.rpn_positive_extra > 0:
+                xe *= 1.0 + FLAGS.rpn_positive_extra * gt_anchors
+
             xe = tf.reduce_sum(xe * gt_anchors_weight) / (tf.reduce_sum(gt_anchors_weight) + 0.0001)
             activation_loss = tf.identity(xe, name='xe')
-
-            prob = tf.squeeze(tf.slice(tf.nn.softmax(logits2), [0, 1], [-1, 1]), axis=1)
             pass
 
-        params = self.rpn_parameters(self.rpn_params_size() * self.n_priors, FLAGS.anchor_stride)
+        params = self.rpn_params(self.rpn_params_size() * self.n_priors, FLAGS.rpn_stride)
+        self.params = params
         params = tf.identity(params, name='rpn_all_params')
         anchor_layer_shape = tf.shape(params)
         params = tf.reshape(params, (-1, self.n_priors, self.rpn_params_size()))     # ? * 4
@@ -145,7 +187,7 @@ class BasicRPN (aardvark.Model2D):
         pl = weighted_loss_by_channel(self.rpn_params_loss(params, gt_params, priors2), gt_params_weight, self.n_priors)
         pl = tf.check_numerics(pl, 'p1', name='p1') # params-loss
 
-        tf.identity(prob, name='rpn_all_probs')
+        tf.identity(probs, name='rpn_all_probs')
 
         if add_loss:
             tf.losses.add_loss(activation_loss * FLAGS.rpn_logits_weight)
@@ -230,8 +272,8 @@ class RPN (BasicRPN):
         W = shape[2]
         offset = tf_repeat(tf.range(B), [H * W * n_priors])
         if True:    # generate array of box centers
-            x0 = tf.cast(tf.range(W) * FLAGS.anchor_stride, tf.float32)
-            y0 = tf.cast(tf.range(H) * FLAGS.anchor_stride, tf.float32)
+            x0 = tf.cast(tf.range(W) * FLAGS.rpn_stride, tf.float32)
+            y0 = tf.cast(tf.range(H) * FLAGS.rpn_stride, tf.float32)
             x0, y0 = tf.meshgrid(x0, y0)
             x0 = tf.reshape(x0, (-1,))
             y0 = tf.reshape(y0, (-1,))
@@ -242,8 +284,8 @@ class RPN (BasicRPN):
         
         dx, dy, w, h = [tf.squeeze(x, axis=1) for x in tf.split(anchor_params, [1,1,1,1], 1)]
 
-        W = tf.cast(W * FLAGS.anchor_stride, tf.float32)
-        H = tf.cast(H * FLAGS.anchor_stride, tf.float32)
+        W = tf.cast(W * FLAGS.rpn_stride, tf.float32)
+        H = tf.cast(H * FLAGS.rpn_stride, tf.float32)
 
         max_X = W-1
         max_Y = H-1
@@ -288,7 +330,7 @@ class RPN (BasicRPN):
                       augments + [
                       #{"type": "clip", "round": FLAGS.backbone_stride},
                       {"type": "clip", "shift": shift, "width": FLAGS.fix_width, "height": FLAGS.fix_height, "round": FLAGS.clip_stride},
-                      {"type": "anchors.dense.box", 'downsize': FLAGS.anchor_stride, 'lower_th': FLAGS.lower_th, 'upper_th': FLAGS.upper_th, 'weighted': False, 'priors': self.priors, 'params_default': 1.0},
+                      {"type": "anchors.dense.box", 'downsize': FLAGS.rpn_stride, 'lower_th': FLAGS.lower_th, 'upper_th': FLAGS.upper_th, 'weighted': False, 'priors': self.priors, 'params_default': 1.0},
                       {"type": "box_feature"},
                       {"type": "drop"},
                       ]

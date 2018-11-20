@@ -548,7 +548,7 @@ def train (model):
             for _ in progress:
                 record = stream.next()
                 mm, _ = sess.run([model.metrics, train_op], feed_dict=model.feed_dict(record, True))
-                metrics_txt = metrics.update(mm, record[0].ids.shape[0])
+                metrics_txt = metrics.update(mm, record[1].shape[0])
                 progress.set_description(metrics_txt)
                 step += 1
                 pass
@@ -569,7 +569,7 @@ def train (model):
                 progress = tqdm(val_stream, leave=False, bar_format=bar_format)
                 for record in progress:
                     mm = sess.run(model.metrics, feed_dict=model.feed_dict(record, False))
-                    metrics_txt = metrics.update(mm, record[0].ids.shape[0])
+                    metrics_txt = metrics.update(mm, record[1].shape[0])
                     progress.set_description(metrics_txt)
                     pass
                 if metrics.avg[-1] > best:
